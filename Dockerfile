@@ -8,11 +8,6 @@ RUN npm ci
 
 COPY . .
 
-# NEXT_PUBLIC_BACKEND_URL is inlined at build time.
-# Pass the internal Docker network URL so server components call the backend
-# container directly; the browser never calls this URL.
-ARG NEXT_PUBLIC_BACKEND_URL=http://backend:3001
-ENV NEXT_PUBLIC_BACKEND_URL=$NEXT_PUBLIC_BACKEND_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
