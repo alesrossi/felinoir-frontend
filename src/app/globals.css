@@ -1,0 +1,124 @@
+@import "tw-animate-css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Film-noir palette — near-black charcoal, warm off-white, desaturated teal */
+    --background: 0 0% 6%;
+    --foreground: 40 10% 88%;
+
+    --card: 0 0% 9%;
+    --card-foreground: 40 10% 88%;
+
+    --popover: 0 0% 8%;
+    --popover-foreground: 40 10% 88%;
+
+    --primary: 345 96% 30%;    /* Roman red — #980328 */
+    --primary-foreground: 0 0% 96%;
+
+    --secondary: 0 0% 13%;
+    --secondary-foreground: 40 8% 72%;
+
+    --muted: 0 0% 11%;
+    --muted-foreground: 40 5% 58%;
+
+    --accent: 345 96% 30%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 60% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 15%;
+    --input: 0 0% 12%;
+    --ring: 345 96% 30%;
+
+    --roman: 345 96% 30%;       /* #980328 — Roman red, same as primary */
+    --roman-muted: 345 70% 58%; /* lighter variant for text on dark bg */
+
+    --cyan: 187 28% 58%;        /* kept for map markers */
+    --cyan-foreground: 0 0% 6%;
+
+    --radius: 0.25rem;
+  }
+
+  .light {
+    --background: 39 44% 92%;        /* Canvas #F4EEE3 */
+    --foreground: 21 18% 9%;         /* Primary ink #1A1512 */
+
+    --card: 39 37% 88%;              /* Surface #EBE3D4 */
+    --card-foreground: 21 18% 9%;    /* Primary ink #1A1512 */
+
+    --popover: 43 73% 96%;           /* High #FCF7EB */
+    --popover-foreground: 21 18% 9%; /* Primary ink #1A1512 */
+
+    --primary: 353 79% 44%;          /* Rosso Cinema #C8182E */
+    --primary-foreground: 43 73% 96%; /* High #FCF7EB */
+
+    --secondary: 39 37% 88%;         /* Surface #EBE3D4 */
+    --secondary-foreground: 30 14% 26%; /* Secondary ink #4A4138 */
+
+    --muted: 43 73% 96%;             /* High #FCF7EB */
+    --muted-foreground: 33 10% 49%;  /* Tertiary #8A7F72 */
+
+    --accent: 353 79% 44%;           /* Rosso Cinema #C8182E */
+    --accent-foreground: 43 73% 96%; /* High #FCF7EB */
+
+    --destructive: 0 60% 48%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 38 23% 70%;            /* Border #C5B8A2 */
+    --input: 39 26% 79%;             /* Hairline #D8CEBC */
+    --ring: 353 79% 44%;             /* Rosso Cinema #C8182E */
+
+    --roman: 353 79% 44%;            /* Rosso Cinema #C8182E */
+    --roman-muted: 351 85% 35%;      /* Pressed #A30D24 */
+
+    --cyan: 187 55% 30%;
+    --cyan-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased min-h-full flex flex-col;
+  }
+}
+
+/* ── Film-grain vignette ─────────────────────────────────────────────────── */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 0%, transparent 50%, hsl(0 0% 0% / 0.45) 100%);
+  z-index: 0;
+}
+
+.light body::after {
+  display: none;
+}
+
+/* ── Serif display utility ───────────────────────────────────────────────── */
+.font-display {
+  font-family: var(--font-cormorant), Georgia, "Times New Roman", serif;
+}
+
+/* ── Scrollbar hide ──────────────────────────────────────────────────────── */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
