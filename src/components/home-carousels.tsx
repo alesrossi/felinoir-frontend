@@ -32,6 +32,7 @@ function CarouselCard({ movie, locale, priority }: { movie: MovieRecord; locale:
       <div className="relative w-28 aspect-[2/3] rounded overflow-hidden bg-card border border-border/50 group-hover:border-border transition-colors">
         <PosterImage
           primary={movie.tmdbPosterUrl ?? undefined}
+          fallback={movie.posterUrl ?? undefined}
           alt=""
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
           placeholderClassName="w-full h-full bg-card"
