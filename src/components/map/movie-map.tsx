@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo, useRef } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import { X, Share2, Check, CalendarPlus } from "lucide-react";
 import { Map, MapMarker, MarkerContent, MapControls, useMap } from "@/components/ui/map";
@@ -453,24 +453,19 @@ function useUserPosition(): LatLng | null {
 }
 
 /**
- * Recentres the map when the initial random pick turns out not to be the
- * closest cinema, and again whenever a filter/date change leaves no marker in
- * view. Never fights the user: an in-view marker means the view stays put.
+ * Recentres the map only when the current viewport contains no active marker
+ * (on load, or after a filter/date change empties the view): to the cinema
+ * closest to the user when geolocation is available, otherwise a random one.
+ * While an active marker is in view the map is never moved.
  */
 function MapAutoCenter({ markers, userPos }: { markers: MovieCinemaMarker[]; userPos: LatLng | null }) {
   const { map, isLoaded } = useMap();
-  const locatedRef = useRef(false);
 
   useEffect(() => {
     if (!map || !isLoaded || markers.length === 0) return;
 
-    const justLocated = userPos !== null && !locatedRef.current;
-    if (justLocated) locatedRef.current = true;
-
-    if (!justLocated) {
-      const bounds = map.getBounds();
-      if (markers.some(m => bounds.contains([m.lng, m.lat]))) return;
-    }
+    const bounds = map.getBounds();
+    if (preferActive(markers).some(m => bounds.contains([m.lng, m.lat]))) return;
 
     const target = userPos ? pickClosest(markers, userPos) : pickRandom(markers);
     if (target) map.easeTo({ center: [target.lng, target.lat], duration: 600 });
@@ -498,18 +493,9 @@ export function MovieMap({ markers, movieTitle }: MovieMapProps) {
 
   const userPos = useUserPosition();
 
-  // Computed once: the map only reads `center` when it is constructed, and a
-  // marker under the initial viewport avoids a visibly empty first paint while
-  // geolocation is still pending.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  const initialCenter = useMemo<[number, number]>(() => {
-    const seed = pickRandom(markers);
-    return seed ? [seed.lng, seed.lat] : ROME_CENTER;
-  }, []);
-
   return (
     <>
-      <Map center={initialCenter} zoom={12}>
+      <Map center={ROME_CENTER} zoom={12}>
         <MapAutoCenter markers={markers} userPos={userPos} />
         <MapInteractionTracker
           markers={markers}
