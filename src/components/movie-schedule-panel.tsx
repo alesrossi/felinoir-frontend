@@ -26,6 +26,11 @@ function startOfDay(d: Date): Date {
   return copy;
 }
 
+function parseDateStr(s: string): Date {
+  const [y, mo, d] = s.split("-").map(Number);
+  return new Date(y, mo - 1, d);
+}
+
 // ---------------------------------------------------------------------------
 // List view — one row per cinema, showings as time chips
 // ---------------------------------------------------------------------------
@@ -261,25 +266,38 @@ interface MovieSchedulePanelProps {
   onFilteredCountChange?: (count: number) => void;
 }
 
-function firstDateWithShowings(
+/**
+ * Sorted list of dates (today onward) that have at least one showing under the
+ * active filters. Landing and prev/next navigation both walk this list, so the
+ * user never lands on — or steps through — a date with nothing to show.
+ */
+function availableDatesFor(
   markers: MovieCinemaMarker[],
   cinemas: Set<string>,
   ov: boolean,
-  fromDateStr: string,
+  times: Set<string>,
+  dateFilter: Set<string>,
   movieLanguage?: string,
-): string | null {
+): string[] {
+  const todayStr = toDateStr(startOfDay(new Date()));
+  const activeTimeRanges = TIME_RANGES.filter(r => times.has(r.id));
   const dates = new Set<string>();
   for (const m of markers) {
     if (cinemas.size > 0 && !cinemas.has(m.cinemaId)) continue;
     if (m.openAir && !cinemas.has(m.cinemaId)) continue;
     for (const s of m.showings) {
-      if (ov && !s.isOV && movieLanguage && movieLanguage !== "it") continue;
       const d = s.datetime.slice(0, 10);
-      if (d >= fromDateStr) dates.add(d);
+      if (d < todayStr) continue;
+      if (dateFilter.size > 0 && !dateFilter.has(d)) continue;
+      if (ov && !s.isOV && movieLanguage && movieLanguage !== "it") continue;
+      if (activeTimeRanges.length > 0) {
+        const mins = minutesFromDatetime(s.datetime);
+        if (!activeTimeRanges.some(r => inTimeRange(r, mins))) continue;
+      }
+      dates.add(d);
     }
   }
-  if (dates.size === 0) return null;
-  return [...dates].sort()[0];
+  return [...dates].sort();
 }
 
 export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = "map", onFilteredCountChange }: MovieSchedulePanelProps) {
@@ -301,16 +319,11 @@ export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = 
     setSelectedTimes(times);
     setFilterDates(dates);
 
-    const todayStr = toDateStr(startOfDay(new Date()));
-    // If date filters are active, jump to the first filtered date that has showings;
-    // otherwise fall back to the first date with showings from today onward.
-    const fromStr = dates.size > 0
-      ? [...dates].sort()[0]
-      : todayStr;
-    const first = firstDateWithShowings(markers, cinemas, ov, fromStr, movieLanguage);
-    if (first && first > todayStr) {
-      const [y, mo, d] = first.split("-").map(Number);
-      setSelectedDate(new Date(y, mo - 1, d));
+    // Land on the first date that actually has showings under the loaded
+    // filters — never on an empty date.
+    const first = availableDatesFor(markers, cinemas, ov, times, dates, movieLanguage)[0];
+    if (first && first !== toDateStr(startOfDay(new Date()))) {
+      setSelectedDate(parseDateStr(first));
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -334,45 +347,28 @@ export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = 
   const isToday = selectedDate.getTime() === today.getTime();
   const dateStr = toDateStr(selectedDate);
 
-  // Sorted list of allowed dates: when a date filter is active, only those dates;
-  // otherwise navigation is unrestricted (empty = no restriction).
-  const allowedDates = useMemo<string[]>(() => {
-    if (filterDates.size === 0) return [];
-    return [...filterDates].sort();
-  }, [filterDates]);
+  // Navigation walks only dates that have showings under the active filters,
+  // skipping empty days (e.g. from the 3rd straight to the 9th).
+  const availableDates = useMemo<string[]>(
+    () => availableDatesFor(markers, selectedCinemas, filterOV, selectedTimes, filterDates, movieLanguage),
+    [markers, selectedCinemas, filterOV, selectedTimes, filterDates, movieLanguage],
+  );
 
-  const currentIdx = allowedDates.length > 0 ? allowedDates.indexOf(dateStr) : -1;
+  // Nearest available date on either side of the current one. Works even when
+  // the current date is off-list (picked via the native date picker).
+  const prevAvailable = [...availableDates].reverse().find(d => d < dateStr);
+  const nextAvailable = availableDates.find(d => d > dateStr);
 
   function prevDay() {
-    if (allowedDates.length > 0) {
-      const idx = currentIdx > 0 ? currentIdx - 1 : 0;
-      const [y, mo, d] = allowedDates[idx].split("-").map(Number);
-      setSelectedDate(new Date(y, mo - 1, d));
-    } else {
-      setSelectedDate(d => {
-        const next = startOfDay(d);
-        next.setDate(next.getDate() - 1);
-        return next;
-      });
-    }
+    if (prevAvailable) setSelectedDate(parseDateStr(prevAvailable));
   }
 
   function nextDay() {
-    if (allowedDates.length > 0) {
-      const idx = currentIdx < allowedDates.length - 1 ? currentIdx + 1 : allowedDates.length - 1;
-      const [y, mo, d] = allowedDates[idx].split("-").map(Number);
-      setSelectedDate(new Date(y, mo - 1, d));
-    } else {
-      setSelectedDate(d => {
-        const next = startOfDay(d);
-        next.setDate(next.getDate() + 1);
-        return next;
-      });
-    }
+    if (nextAvailable) setSelectedDate(parseDateStr(nextAvailable));
   }
 
-  const prevDisabled = allowedDates.length > 0 ? currentIdx <= 0 : isToday;
-  const nextDisabled = allowedDates.length > 0 ? currentIdx >= allowedDates.length - 1 : false;
+  const prevDisabled = !prevAvailable;
+  const nextDisabled = !nextAvailable;
 
   const hasCinemaFilter = selectedCinemas.size > 0;
 
