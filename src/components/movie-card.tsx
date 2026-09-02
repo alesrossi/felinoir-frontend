@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PosterImage } from "@/components/ui/poster-image";
 import { useLang } from "@/lib/lang";
 import { languageToFlag } from "@/lib/utils";
+import { moviePath } from "@/lib/structured-data/constants";
 import type { ApiMovie as MovieRecord } from "@/lib/api/types";
 
 interface MovieCardProps {
@@ -61,8 +62,8 @@ export function MovieCard({ movie, screeningCount, filterParams, view = "grid", 
     window.addEventListener(GLOBAL_FILTER_EVENT, onFilter);
     return () => window.removeEventListener(GLOBAL_FILTER_EVENT, onFilter);
   }, []);
-  const moviePath = movie.slug ?? movie.id;
-  const href = filterParams ? `/movies/${moviePath}?${filterParams}` : `/movies/${moviePath}`;
+  const path = moviePath(movie);
+  const href = filterParams ? `${path}?${filterParams}` : path;
 
   const displayTitle = locale === "en"
     ? (movie.tmdbTitleEn ?? movie.tmdbTitle ?? movie.title)

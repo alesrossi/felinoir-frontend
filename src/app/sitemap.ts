@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { apiFetch } from "@/lib/api/client";
 import type { ApiCinema, ApiMovie } from "@/lib/api/types";
+import { moviePath } from "@/lib/structured-data/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const movieUrls = movies.map((m) => ({
-    url: `${BASE_URL}/movies/${m.slug ?? m.id}`,
+    url: `${BASE_URL}${moviePath(m)}`,
     changeFrequency: "weekly" as const,
     priority: 0.6,
   }));

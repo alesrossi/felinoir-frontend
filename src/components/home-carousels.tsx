@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { PosterImage } from "@/components/ui/poster-image";
 import { useLang } from "@/lib/lang";
+import { moviePath } from "@/lib/structured-data/constants";
 import type { ApiMovie as MovieRecord } from "@/lib/api/types";
 
 export type CarouselSectionId =
@@ -22,7 +23,7 @@ export interface CarouselSection {
 
 function CarouselCard({ movie, locale, priority }: { movie: MovieRecord; locale: string; priority?: boolean }) {
   const title = locale === "en" ? (movie.tmdbTitleEn ?? movie.title) : (movie.tmdbTitle ?? movie.title);
-  const href = `/movies/${movie.slug ?? movie.id}`;
+  const href = moviePath(movie);
 
   return (
     <Link

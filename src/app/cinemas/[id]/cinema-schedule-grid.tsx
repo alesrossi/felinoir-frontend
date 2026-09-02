@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Film, X, ChevronLeft, ChevronRight, Copy, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useLang } from "@/lib/lang";
+import { moviePath } from "@/lib/structured-data/constants";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -274,7 +275,7 @@ export function CinemaScheduleGrid({ dates, rows, cinemaName, cinemaWebsite }: P
               <tr key={row.movieId}>
                 {/* Poster */}
                 <td className="p-0">
-                  <Link href={`/movies/${row.movieSlug ?? row.movieId}`} className="block group">
+                  <Link href={moviePath({ id: row.movieId, slug: row.movieSlug })} className="block group">
                     <div className="aspect-[2/3] w-full rounded-md overflow-hidden border border-border bg-card group-hover:border-roman/40 transition-colors">
                       {row.posterUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element

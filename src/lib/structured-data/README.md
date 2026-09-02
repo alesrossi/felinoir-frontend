@@ -55,13 +55,21 @@ the homepage, do **not** give it its own `ItemList`.
 Every node is keyed by its canonical absolute URL plus a fragment, so a node
 referenced from one page resolves to the node fully described on its own page:
 
-- Film — `https://felinoir.it/movies/{slug ?? id}#film`
+- Film — `https://felinoir.it/movies/{usable slug, else id}#film`
 - Cinema — `https://felinoir.it/cinemas/{id}#theater`
 - Site — `https://felinoir.it/#website`
 - Organization — `https://felinoir.it/#organization`
 
-The film path uses `slug ?? id` to match how the app links to films and what
-`app/sitemap.ts` submits, so the `@id` is always the URL Google actually indexes.
+The film path uses the backend slug when it is usable and the numeric id
+otherwise, via `moviePath()` — the single place that decides a film URL. Links,
+canonicals, the sitemap and `@id` all call it, so they cannot drift apart.
+
+A slug is *unusable* when it is not already URL-safe, when it is all digits
+(`/movies/[id]` routes an all-digit segment to the id lookup, so it would resolve
+to the wrong film), or when it is degenerate. The backend derives slugs from the
+title with an ASCII-only transform, so a title in a non-Latin script collapses to
+nothing and leaves only the year — `"Il terzo omicidio"` arrived as `-2017`. That
+is a backend bug; `isUsableSlug()` only stops it reaching the index.
 
 ## Things that are deliberately absent
 
