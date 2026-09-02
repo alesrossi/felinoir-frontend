@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { getMovie, getMovieBySlug } from "@/lib/api/movies";
+import { getMovieByParam } from "@/lib/api/movies";
 import { getScreenings } from "@/lib/api/screenings";
 import { getCinemasConfig } from "@/lib/cinemas-config";
+import { romeWallClockKey } from "@/lib/og/showtimes";
+import { OG_IMAGE_SIZE } from "@/lib/og/constants";
 import { MovieDetailLayout } from "./movie-detail-layout";
 import type { MovieCinemaMarker, MovieShowing } from "@/components/map/movie-map";
-import type { ApiMovie } from "@/lib/api/types";
 import {
   JsonLd,
   buildBreadcrumbList,
@@ -31,28 +32,55 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-function fetchMovie(param: string): Promise<ApiMovie | null> {
-  return /^\d+$/.test(param) ? getMovie(Number(param)) : getMovieBySlug(param);
-}
-
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { id: param } = await params;
-  const movie = await fetchMovie(param);
+  const movie = await getMovieByParam(param);
   if (!movie) return {};
 
   const title = localizedTitle(movie, SERVER_LOCALE);
+  const description = shareDescription(movie);
+
+  // The share card carries today's showtimes, so its URL carries today's Rome
+  // date: scrapers key their cache on the URL, and a new URL each day is what
+  // makes a re-shared link show current times instead of last week's.
+  const image = {
+    url: `${moviePath(movie)}/og?d=${romeWallClockKey(new Date()).slice(0, 10)}`,
+    width: OG_IMAGE_SIZE.width,
+    height: OG_IMAGE_SIZE.height,
+    alt: `${title} — orari e cinema a Roma`,
+    type: "image/jpeg",
+  };
+
   return {
     title,
+    description,
     alternates: { canonical: moviePath(movie) },
-    openGraph: { title, url: movieUrl(movie) },
+    openGraph: {
+      type: "video.movie",
+      title,
+      description,
+      url: movieUrl(movie),
+      images: [image],
+    },
+    twitter: { card: "summary_large_image", title, description, images: [image] },
   };
+}
+
+/** One line for the preview text under the title in a chat app. */
+function shareDescription(movie: { tmdbTagline?: string; tmdbPlot?: string; synopsis?: string }): string {
+  const source = movie.tmdbTagline || movie.tmdbPlot || movie.synopsis;
+  if (!source) return "Orari e cinema a Roma.";
+  const trimmed = source.trim();
+  if (trimmed.length <= 160) return trimmed;
+  // Cut on a word boundary — chat apps truncate mid-word otherwise.
+  return `${trimmed.slice(0, 157).replace(/\s+\S*$/, "")}…`;
 }
 
 export default async function MoviePage({ params }: PageProps) {
   const { id: param } = await params;
   const now = new Date().toISOString();
 
-  const movie = await fetchMovie(param);
+  const movie = await getMovieByParam(param);
 
   if (!movie) notFound();
 

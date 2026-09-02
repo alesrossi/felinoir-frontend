@@ -18,3 +18,12 @@ export function getMovie(id: number): Promise<ApiMovie | null> {
 export function getMovieBySlug(slug: string): Promise<ApiMovie | null> {
   return apiFetch<ApiMovie>(`/movies/slug/${encodeURIComponent(slug)}`).catch(() => null);
 }
+
+/**
+ * Resolves the `[id]` route param, which is a numeric id or a slug. Shared by
+ * the film page and its share-card route so the two cannot disagree about which
+ * film a URL means.
+ */
+export function getMovieByParam(param: string): Promise<ApiMovie | null> {
+  return /^\d+$/.test(param) ? getMovie(Number(param)) : getMovieBySlug(param);
+}

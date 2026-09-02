@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // The share-card route re-encodes its PNG as JPEG with sharp. Keeping sharp
+  // external stops webpack bundling a native module and keeps it traced into
+  // the standalone output.
+  serverExternalPackages: ["sharp"],
   async headers() {
     return [
       {
