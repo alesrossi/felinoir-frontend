@@ -38,8 +38,17 @@ almost certainly that no such feature exists.
 | `Movie` | `/movies/{id}` | The film entity. Carries the `sameAs` knowledge-graph links. |
 | `ScreeningEvent` | `/movies/{id}` | One per upcoming showtime; references the film and cinema by `@id`. |
 | `MovieTheater` | `/cinemas/{id}` | The cinema entity: address, coordinates, official site. |
-| `ItemList` | `/`, `/cinemas`, `/cinemas/list` | Section contents as `position` + `name` + `url` only. |
+| `ItemList` | `/`, `/cinemas`, `/cinemas/list` | Page contents as `position` + `name` + `url` only. **One per page** — see below. |
 | `BreadcrumbList` | detail pages | Mirrors the visible navigation. |
+
+## One `ItemList` per page
+
+Google's carousel validator accepts a single `ItemList` per page and reports
+*"Multiple ListItem defined per page"* when it finds more. The homepage therefore
+emits one list mirroring the film grid (`#movies`), not one list per carousel
+section — the sections overlap anyway, so the same film would have appeared with
+several different `position` values on the same page. If you add a new section to
+the homepage, do **not** give it its own `ItemList`.
 
 ## `@id` strategy
 

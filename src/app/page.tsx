@@ -8,8 +8,7 @@ import { HomeCarousels } from "@/components/home-carousels";
 import FooterSection from "@/components/ui/footer";
 import { TIME_RANGES, inTimeRange, minutesFromDatetime } from "@/lib/time-ranges";
 import { getCinemasConfig } from "@/lib/cinemas-config";
-import { translations } from "@/lib/translations";
-import { JsonLd, buildItemList, graph, localizedTitle, moviePath } from "@/lib/structured-data";
+import { BASE_URL, JsonLd, buildItemList, graph, localizedTitle, moviePath } from "@/lib/structured-data";
 import type { CarouselSection } from "@/components/home-carousels";
 import type { Metadata } from "next";
 
@@ -19,6 +18,9 @@ export const dynamic = "force-dynamic";
 
 // Server renders are always Italian (see LangProvider).
 const SERVER_LOCALE = "it" as const;
+
+// Name of the page's single ItemList; matches SERVER_LOCALE.
+const HOMEPAGE_LIST_NAME = "Film in programmazione a Roma";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -196,22 +198,20 @@ export default async function Home({ searchParams }: PageProps) {
     return a.title.localeCompare(b.title);
   });
 
-  // One ItemList per visible section, entries limited to name + url so the
-  // payload stays a fraction of the page content.
-  const carouselLabels = translations[SERVER_LOCALE].carousels;
+  // Exactly one ItemList per page: Google's carousel validator rejects a page
+  // that declares several ("Multiple ListItem defined per page"), and the
+  // carousel sections overlap anyway — the same film appears in more than one.
+  // The single list mirrors the grid, which is the page's main content.
+  // Entries stay name + url only; the film entity lives on its detail page.
   const structuredData = graph(
-    ...carouselSections
-      .filter((section) => section.movies.length > 0)
-      .map((section) =>
-        buildItemList({
-          id: `https://felinoir.it/#list-${section.id}`,
-          name: carouselLabels[section.id],
-          entries: section.movies.map((m) => ({
-            name: localizedTitle(m, SERVER_LOCALE),
-            url: moviePath(m),
-          })),
-        }),
-      ),
+    buildItemList({
+      id: `${BASE_URL}/#movies`,
+      name: HOMEPAGE_LIST_NAME,
+      entries: sorted.map((m) => ({
+        name: localizedTitle(m, SERVER_LOCALE),
+        url: moviePath(m),
+      })),
+    }),
   );
 
   return (
