@@ -1,11 +1,27 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getMovie, getMovieBySlug } from "@/lib/api/movies";
 import { getScreenings } from "@/lib/api/screenings";
 import { getCinemasConfig } from "@/lib/cinemas-config";
 import { MovieDetailLayout } from "./movie-detail-layout";
 import type { MovieCinemaMarker, MovieShowing } from "@/components/map/movie-map";
+import type { ApiMovie } from "@/lib/api/types";
+import {
+  JsonLd,
+  buildBreadcrumbList,
+  buildMovie,
+  buildScreeningEvents,
+  graph,
+  localizedTitle,
+  moviePath,
+  movieUrl,
+} from "@/lib/structured-data";
 
 export const dynamic = "force-dynamic";
+
+// Server renders are always Italian (see LangProvider), so the markup describes
+// the Italian variant of the page — `name` matches the rendered <h1>.
+const SERVER_LOCALE = "it" as const;
 
 function formatTime(isoDatetime: string): string {
   return isoDatetime.slice(11, 16);
@@ -15,14 +31,28 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
+function fetchMovie(param: string): Promise<ApiMovie | null> {
+  return /^\d+$/.test(param) ? getMovie(Number(param)) : getMovieBySlug(param);
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id: param } = await params;
+  const movie = await fetchMovie(param);
+  if (!movie) return {};
+
+  const title = localizedTitle(movie, SERVER_LOCALE);
+  return {
+    title,
+    alternates: { canonical: moviePath(movie) },
+    openGraph: { title, url: movieUrl(movie) },
+  };
+}
+
 export default async function MoviePage({ params }: PageProps) {
   const { id: param } = await params;
   const now = new Date().toISOString();
 
-  const isNumeric = /^\d+$/.test(param);
-  const movie = isNumeric
-    ? await getMovie(Number(param))
-    : await getMovieBySlug(param);
+  const movie = await fetchMovie(param);
 
   if (!movie) notFound();
 
@@ -99,8 +129,24 @@ export default async function MoviePage({ params }: PageProps) {
     tmdbTrailerUrlEn: movie.tmdbTrailerUrlEn,
   };
 
+  const displayTitle = localizedTitle(movie, SERVER_LOCALE);
+  const structuredData = graph(
+    buildMovie(movie, SERVER_LOCALE),
+    ...buildScreeningEvents({
+      movie,
+      movieName: displayTitle,
+      screenings,
+      cinemaNames: new Map(cinemaConfigs.map(c => [c.id, c.name])),
+    }),
+    buildBreadcrumbList([
+      { name: "Felinoir", url: "/" },
+      { name: displayTitle },
+    ], `${movieUrl(movie)}#breadcrumb`),
+  );
+
   return (
     <div className="flex flex-col bg-background text-foreground lg:h-dvh">
+      <JsonLd data={structuredData} />
       <MovieDetailLayout
         movie={movieData}
         markers={markers}

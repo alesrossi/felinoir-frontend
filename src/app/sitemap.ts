@@ -27,6 +27,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     { url: BASE_URL, changeFrequency: "daily", priority: 1.0 },
     { url: `${BASE_URL}/cinemas`, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${BASE_URL}/cinemas/list`, changeFrequency: "weekly", priority: 0.7 },
     ...cinemaUrls,
     ...movieUrls,
   ];

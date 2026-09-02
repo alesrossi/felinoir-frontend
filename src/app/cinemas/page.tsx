@@ -1,7 +1,14 @@
+import type { Metadata } from "next";
 import { CinemaMap } from "@/components/map/cinema-map-dynamic";
 import { CinemasBackLink } from "./cinemas-back-link";
 import { getCinemasConfig } from "@/lib/cinemas-config";
 import type { GeocodedCinema } from "@/lib/osm/types";
+import { JsonLd, buildBreadcrumbList, buildItemList, graph } from "@/lib/structured-data";
+
+export const metadata: Metadata = {
+  title: "Cinema di Roma",
+  alternates: { canonical: "/cinemas" },
+};
 
 export default function CinemasPage() {
   const cinemas: GeocodedCinema[] = getCinemasConfig().map((c) => ({
@@ -13,8 +20,19 @@ export default function CinemasPage() {
     coordinates: c.coordinates,
   }));
 
+  const structuredData = graph(
+    buildItemList({
+      id: "https://felinoir.it/cinemas#cinemas",
+      name: "Cinema di Roma",
+      entries: cinemas.map((c) => ({ name: c.name, url: `/cinemas/${c.id}` })),
+      maxItems: cinemas.length,
+    }),
+    buildBreadcrumbList([{ name: "Felinoir", url: "/" }, { name: "Cinema" }]),
+  );
+
   return (
     <main id="main-content" className="h-dvh flex flex-col bg-background text-foreground">
+      <JsonLd data={structuredData} />
       {/* Thin top bar */}
       <div className="flex items-center gap-4 px-6 py-4 border-b border-border shrink-0">
         <CinemasBackLink />

@@ -7,6 +7,7 @@ import { ConditionalFabs } from "@/components/conditional-fabs";
 import { getCinemasConfig } from "@/lib/cinemas-config";
 import { apiFetch } from "@/lib/api/client";
 import type { ApiCinema } from "@/lib/api/types";
+import { JsonLd, buildOrganization, buildWebSite, graph } from "@/lib/structured-data";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -35,9 +36,9 @@ export const metadata: Metadata = {
   description: "Scopri i cinema di Roma",
   authors: [{ name: "Alessandro Rossi", url: BASE_URL }],
   creator: "Alessandro Rossi",
-  alternates: {
-    canonical: BASE_URL,
-  },
+  // No `alternates.canonical` here on purpose: root metadata is inherited, so a
+  // canonical pointing at the homepage would be repeated on every film and
+  // cinema page and canonicalise them away. Each route declares its own.
   openGraph: {
     type: "website",
     locale: "it_IT",
@@ -87,6 +88,8 @@ export default async function RootLayout({
         <style dangerouslySetInnerHTML={{ __html: `html:not([data-ready]){visibility:hidden}` }} />
         <script dangerouslySetInnerHTML={{ __html: `setTimeout(function(){document.documentElement.setAttribute('data-ready','')},2000);` }} />
         <script defer src="https://umami.felinoir.it/script.js" data-website-id="71103aa6-da52-4da8-83d4-62a1508ea87c"></script>
+        {/* Site-wide entities, emitted once. Page-specific nodes reference them by @id. */}
+        <JsonLd data={graph(buildWebSite(), buildOrganization())} />
       </head>
       <body suppressHydrationWarning>
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100] focus:px-4 focus:py-2 focus:bg-background focus:text-foreground focus:border focus:border-border focus:rounded">

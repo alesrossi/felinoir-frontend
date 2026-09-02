@@ -1,5 +1,13 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getScreenings } from "@/lib/api/screenings";
+import {
+  JsonLd,
+  buildBreadcrumbList,
+  buildMovieTheater,
+  cinemaUrl,
+  graph,
+} from "@/lib/structured-data";
 import type { ApiScreening } from "@/lib/api/types";
 import { MapPin } from "lucide-react";
 import { getCinemaConfig } from "@/lib/cinemas-config";
@@ -83,6 +91,18 @@ function buildRows(screenings: ApiScreening[], dates: string[]): MovieRowData[] 
   });
 }
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { id } = await params;
+  const config = getCinemaConfig(id);
+  if (!config) return {};
+
+  return {
+    title: config.name,
+    alternates: { canonical: `/cinemas/${id}` },
+    openGraph: { title: config.name, url: cinemaUrl(id) },
+  };
+}
+
 export default async function CinemaPage({ params }: PageProps) {
   const { id } = await params;
 
@@ -132,8 +152,18 @@ export default async function CinemaPage({ params }: PageProps) {
   const dateColumns = allDates.map(formatDateColumn);
   const rows = buildRows(upcoming, allDates);
 
+  const structuredData = graph(
+    buildMovieTheater(cinema),
+    buildBreadcrumbList([
+      { name: "Felinoir", url: "/" },
+      { name: "Cinema", url: "/cinemas/list" },
+      { name: cinema.name },
+    ], `${cinemaUrl(cinema.id)}#breadcrumb`),
+  );
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <JsonLd data={structuredData} />
       <div className="mx-auto max-w-7xl px-4 py-12">
 
         <CinemaPageNav websiteUrl={cinema.website} />

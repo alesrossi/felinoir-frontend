@@ -8,11 +8,21 @@ import { HomeCarousels } from "@/components/home-carousels";
 import FooterSection from "@/components/ui/footer";
 import { TIME_RANGES, inTimeRange, minutesFromDatetime } from "@/lib/time-ranges";
 import { getCinemasConfig } from "@/lib/cinemas-config";
+import { translations } from "@/lib/translations";
+import { JsonLd, buildItemList, graph, localizedTitle, moviePath } from "@/lib/structured-data";
 import type { CarouselSection } from "@/components/home-carousels";
+import type { Metadata } from "next";
 
 
 
 export const dynamic = "force-dynamic";
+
+// Server renders are always Italian (see LangProvider).
+const SERVER_LOCALE = "it" as const;
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 interface PageProps {
   searchParams: Promise<{ q?: string; cinemas?: string; dates?: string; sort?: string; ov?: string; times?: string; genres?: string }>;
@@ -186,8 +196,27 @@ export default async function Home({ searchParams }: PageProps) {
     return a.title.localeCompare(b.title);
   });
 
+  // One ItemList per visible section, entries limited to name + url so the
+  // payload stays a fraction of the page content.
+  const carouselLabels = translations[SERVER_LOCALE].carousels;
+  const structuredData = graph(
+    ...carouselSections
+      .filter((section) => section.movies.length > 0)
+      .map((section) =>
+        buildItemList({
+          id: `https://felinoir.it/#list-${section.id}`,
+          name: carouselLabels[section.id],
+          entries: section.movies.map((m) => ({
+            name: localizedTitle(m, SERVER_LOCALE),
+            url: moviePath(m),
+          })),
+        }),
+      ),
+  );
+
   return (
     <main id="main-content" className="min-h-screen bg-background text-foreground">
+      <JsonLd data={structuredData} />
       <div className="mx-auto max-w-6xl px-4 py-12">
 
         <HomeHeader openAirIds={[...openAirCinemaIds]} />
