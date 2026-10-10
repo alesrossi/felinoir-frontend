@@ -6,7 +6,6 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { OpenAirSwitcher } from "@/components/open-air-switcher";
 import FooterSection from "@/components/ui/footer";
 import {Feather, Globe, Link as LinkIcon, MessageCircle, Send, Share2} from "lucide-react";
-import { AskFelix } from "@/components/ask-felix";
 
 const socialLinks = [
     { icon: Share2,        label: "Share" },
@@ -35,7 +34,6 @@ export function HomeHeader({ openAirIds }: { openAirIds: string[] }) {
       <h1 className="font-serif text-5xl sm:text-6xl font-light italic tracking-tight text-foreground leading-none mb-5">
         {t.home.nowShowing}
       </h1>
-      <AskFelix />
       <div className="h-px bg-border mt-6" />
     </header>
   );
