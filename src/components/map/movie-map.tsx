@@ -5,6 +5,7 @@ import Link from "next/link";
 import { X, Share2, Check, CalendarPlus } from "lucide-react";
 import { Map, MapMarker, MarkerContent, MapControls, useMap } from "@/components/ui/map";
 import { useLang } from "@/lib/lang";
+import { downloadShowingIcs, showingShareText } from "@/lib/showing-actions";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,52 +96,14 @@ export function BookingModal({ state, onClose }: { state: ModalState; onClose: (
     { weekday: "long", day: "numeric", month: "long" }
   );
 
+  const context = { movieTitle: state.movieTitle, cinemaName: state.cinemaName };
+
   function addToCalendar(s: MovieShowing) {
-    const start = new Date(s.datetime);
-    const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // assume 2h runtime
-    const fmt = (d: Date) =>
-      d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
-    const badges = [s.isOV ? "OV" : "", s.is3D ? "3D" : ""].filter(Boolean).join(" ");
-    const title = [state.movieTitle, badges].filter(Boolean).join(" ");
-    const ics = [
-      "BEGIN:VCALENDAR",
-      "VERSION:2.0",
-      "PRODID:-//felinoir//cinema//EN",
-      "BEGIN:VEVENT",
-      `UID:${s.id}-${s.datetime}@felinoir.it`,
-      `DTSTAMP:${fmt(new Date())}Z`,
-      `DTSTART:${fmt(start)}`,
-      `DTEND:${fmt(end)}`,
-      `SUMMARY:${title}`,
-      `LOCATION:${state.cinemaName}`,
-      s.bookingUrl ? `URL:${s.bookingUrl}` : "",
-      "END:VEVENT",
-      "END:VCALENDAR",
-    ].filter(Boolean).join("\r\n");
-    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${(state.movieTitle ?? "screening").replace(/\s+/g, "-").toLowerCase()}.ics`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadShowingIcs(s, context);
   }
 
   function copyShowing(s: MovieShowing) {
-    const ovLabel = locale === "en" ? "Original version" : "Versione originale";
-    const callToAction = locale === "en" ? "Find more movies on felinoir.it" : "Trova altri film su felinoir.it";
-    const lines = [
-      state.movieTitle ?? "",
-      state.cinemaName,
-      formattedDate,
-      s.time,
-      s.isOV ? ovLabel : "",
-      s.is3D ? "3D" : "",
-      s.bookingUrl ?? "",
-      "\n",
-      callToAction
-    ].filter(Boolean).join("\n");
-    navigator.clipboard.writeText(lines).catch(() => {});
+    navigator.clipboard.writeText(showingShareText(s, { ...context, dateLabel: formattedDate, locale })).catch(() => {});
     setCopiedId(s.id);
     setTimeout(() => setCopiedId(null), 2000);
   }

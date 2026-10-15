@@ -12,7 +12,7 @@ import type { ApiScreening } from "@/lib/api/types";
 import { MapPin } from "lucide-react";
 import { getCinemaConfig } from "@/lib/cinemas-config";
 import { mapsUrl } from "@/lib/utils";
-import { CinemaPageNav } from "./cinema-page-nav";
+import { CinemaPageNav, CinemaWebsiteButton } from "./cinema-page-nav";
 import {
   CinemaScheduleGrid,
   type DateColumn,
@@ -20,7 +20,9 @@ import {
   type ScreeningSlot,
 } from "./cinema-schedule-grid";
 
-const PAGE_SIZE = 5;
+// One week per page. Also defined in cinema-schedule-grid.tsx — a constant
+// imported from a "use client" module isn't a real value on the server.
+const PAGE_SIZE = 7;
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +57,9 @@ function buildRows(screenings: ApiScreening[], dates: string[]): MovieRowData[] 
       map.set(s.movieId, {
         movieId: s.movieId,
         movieSlug: s.movie?.slug,
-        title: s.movie?.title ?? String(s.movieId),
+        title: s.movie?.tmdbTitle ?? s.movie?.title ?? String(s.movieId),
+        titleEn: s.movie?.tmdbTitleEn,
+        durationMinutes: s.movie?.durationMinutes,
         posterUrl: s.movie?.tmdbPosterUrl ?? s.movie?.posterUrl,
         byDate,
         next5: 0,
@@ -69,6 +73,7 @@ function buildRows(screenings: ApiScreening[], dates: string[]): MovieRowData[] 
 
     const slot: ScreeningSlot = {
       id: s.id,
+      datetime: s.datetime,
       time: formatTime(s.datetime),
       is3D: s.is3D ?? false,
       isOV: s.isOV ?? false,
@@ -78,7 +83,7 @@ function buildRows(screenings: ApiScreening[], dates: string[]): MovieRowData[] 
     entry.byDate[date]?.push(slot);
   }
 
-  // 1. Films with showings in the next 5 days first, ranked by that count
+  // 1. Films with showings in the first week first, ranked by that count
   // 2. Films outside the window after, ranked by total upcoming showings
   // 3. Alpha tiebreaker
   return [...map.values()].sort((a, b) => {
@@ -121,7 +126,7 @@ export default async function CinemaPage({ params }: PageProps) {
     .sort((a, b) => a.datetime.localeCompare(b.datetime));
 
   // Build every consecutive day from today to the last scraped date.
-  // Minimum window is 5 days so the first page always has columns even if
+  // Minimum window is one page so the first page always has columns even if
   // the cinema has no screenings yet.
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
@@ -139,7 +144,7 @@ export default async function CinemaPage({ params }: PageProps) {
   };
 
   const minEnd = new Date(todayStart);
-  minEnd.setDate(minEnd.getDate() + 4);
+  minEnd.setDate(minEnd.getDate() + PAGE_SIZE - 1);
   const endDate = lastScraped && lastScraped > toStr(minEnd)
     ? new Date(lastScraped + "T00:00:00")
     : minEnd;
@@ -164,25 +169,30 @@ export default async function CinemaPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <JsonLd data={structuredData} />
-      <div className="mx-auto max-w-7xl px-4 py-12">
+      <div className="mx-auto max-w-7xl px-4 lg:px-8 pb-24">
 
-        <CinemaPageNav websiteUrl={cinema.website} />
+        <CinemaPageNav />
 
         {/* Cinema header */}
-        <div className="mb-10 flex flex-col gap-3">
-          <h1 className="text-4xl font-bold tracking-tight">{cinema.name}</h1>
-          {cinema.address && (
-            <a
-              href={mapsUrl(cinema.address, cinema.coordinates)}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-roman-muted transition-colors"
-            >
-              <MapPin className="size-4 shrink-0" />
-              {cinema.address}
-            </a>
-          )}
-        </div>
+        <header className="mt-6 mb-10 flex items-end justify-between gap-6">
+          <div className="min-w-0">
+            <h1 className="font-serif text-4xl lg:text-[2.75rem] font-medium leading-[1.05] tracking-[-0.015em] text-balance">
+              {cinema.name}
+            </h1>
+            {cinema.address && (
+              <a
+                href={mapsUrl(cinema.address, cinema.coordinates)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1.5 text-sm text-foreground/60 hover:text-foreground transition-colors"
+              >
+                <MapPin className="size-4 shrink-0" />
+                {cinema.address}
+              </a>
+            )}
+          </div>
+          <CinemaWebsiteButton websiteUrl={cinema.website} />
+        </header>
 
         <CinemaScheduleGrid dates={dateColumns} rows={rows} cinemaName={cinema.name} cinemaWebsite={cinema.website} />
       </div>
