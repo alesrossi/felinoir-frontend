@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLang } from "@/lib/lang";
 import { toEnGenre } from "@/lib/genres";
 import { loadStoredGenres, toggleStoredGenre, GLOBAL_FILTER_EVENT } from "@/components/global-filter-fab";
@@ -8,7 +8,7 @@ import { PosterImage } from "@/components/ui/poster-image";
 import { LangSwitcher } from "@/components/lang-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, X } from "lucide-react";
+import { ArrowLeft, Play, X } from "lucide-react";
 import { languageToFlag } from "@/lib/utils";
 
 function buildBackHref(base: string): string {
@@ -24,6 +24,13 @@ function buildBackHref(base: string): string {
   } catch {
     return base;
   }
+}
+
+function formatRuntime(minutes?: number): string | undefined {
+  if (!minutes) return undefined;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m} min`;
 }
 
 function extractYoutubeId(url: string): string | null {
@@ -57,6 +64,7 @@ export interface MovieInfoData {
   posterUrl?: string;
   tmdbTrailerUrlIt?: string;
   tmdbTrailerUrlEn?: string;
+  backdropUrl?: string;
 }
 
 interface MovieInfoPanelProps {
@@ -73,6 +81,24 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
   const router = useRouter();
   const [trailerOpen, setTrailerOpen] = useState(false);
   const [activeGenres, setActiveGenres] = useState<Set<string>>(new Set());
+  const [scrolled, setScrolled] = useState(false);
+  const [plotOpen, setPlotOpen] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(([entry]) => setScrolled(!entry.isIntersecting));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!trailerOpen) return;
+    function onKey(e: KeyboardEvent) { if (e.key === "Escape") setTrailerOpen(false); }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [trailerOpen]);
 
   useEffect(() => {
     setActiveGenres(loadStoredGenres());
@@ -99,8 +125,6 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
     : movie.scrapedGenres;
 
   const actorList = movie.actors?.split(",").map((a) => a.trim()).filter(Boolean) ?? [];
-  const actorsDisplay =
-    actorList.length > 3 ? actorList.slice(0, 3).join(", ") + "…" : actorList.join(", ");
 
   const trailerUrl =
     locale === "en"
@@ -108,13 +132,40 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
       : (movie.tmdbTrailerUrlIt ?? movie.tmdbTrailerUrlEn);
   const trailerId = trailerUrl ? extractYoutubeId(trailerUrl) : null;
 
+  const isItalian = movie.tmdbLanguage === "it";
+  const showIT = hasNonOV || isItalian;
+  const showOV = hasOV && !isItalian && !!movie.tmdbLanguage;
+
+  // ~5 lines at this measure; shorter synopses are shown whole.
+  const plotLong = (plot?.length ?? 0) > 340;
+
+  const ratings = [
+    { label: "IMDb",            title: "Internet Movie Database", value: movie.imdbRating,      suffix: "/10"  },
+    { label: "Rotten Tomatoes", title: "Rotten Tomatoes",         value: movie.rtRating,        suffix: undefined },
+    { label: "Metacritic",      title: "Metacritic",              value: movie.metacriticScore, suffix: "/100" },
+    { label: "TMDb",            title: "The Movie Database",      value: movie.tmdbRating,      suffix: "/10"  },
+  ];
+
+  const year = movie.released?.slice(0, 4);
+  const meta = [year, formatRuntime(movie.durationMinutes)].filter(Boolean);
+
   return (
     <>
-      {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-3.5 border-b border-border shrink-0">
+      {/* Sentinel: once it scrolls away, the top bar turns into a material */}
+      <div ref={sentinelRef} aria-hidden className="h-0" />
+
+      {/* Top bar — floats over the hero, gains a translucent material on scroll */}
+      <div
+        className={[
+          "sticky top-0 z-20 flex h-14 items-center justify-between px-6 lg:px-8 shrink-0 transition-[background-color,box-shadow] duration-200",
+          scrolled
+            ? "bg-background/75 backdrop-blur-xl backdrop-saturate-150 shadow-[0_1px_0_hsl(var(--foreground)/0.06)]"
+            : "bg-transparent",
+        ].join(" ")}
+      >
         <button
           onClick={() => router.push(buildBackHref(backHref))}
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-roman-muted transition-colors"
+          className="-ml-2 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-foreground/70 hover:text-foreground hover:bg-foreground/[0.06] active:scale-[0.97] transition"
         >
           <ArrowLeft className="size-4" />
           {t.movie.back}
@@ -125,155 +176,162 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
         </div>
       </div>
 
-      {/* Details */}
-      <div className="p-6 lg:p-8 space-y-7">
+      <div className="relative isolate -mt-14">
+        {/* Ambient backdrop — a still from the film, dissolving into the page */}
+        {movie.backdropUrl && (
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[340px] overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={movie.backdropUrl}
+              alt=""
+              className="size-full object-cover opacity-60 dark:opacity-45 [mask-image:linear-gradient(to_bottom,black_20%,transparent_100%)]"
+              decoding="async"
+              onError={(e) => { e.currentTarget.style.display = "none"; }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-background/30 via-background/70 to-background" />
+          </div>
+        )}
 
-        {/* Hero: poster + title */}
-        <div className="flex gap-6">
-          <div className="shrink-0">
+        <div className="px-6 pt-24 pb-28 lg:px-8 space-y-8">
+          {/* Hero: poster + identity */}
+          <div className="flex items-end gap-6">
             <PosterImage
               primary={movie.tmdbPosterUrl}
               fallback={movie.posterUrl}
               alt={`${displayTitle} poster`}
-              className="w-28 sm:w-36 rounded border border-white/10 object-cover aspect-[2/3] shadow-2xl"
-              placeholderClassName="w-28 sm:w-36 aspect-[2/3] rounded border border-white/10 bg-muted"
+              className="w-32 xl:w-36 shrink-0 aspect-[2/3] rounded-lg object-cover ring-1 ring-black/10 dark:ring-white/10 shadow-[0_24px_48px_-16px_rgba(0,0,0,0.55)]"
+              placeholderClassName="w-32 xl:w-36 shrink-0 aspect-[2/3] rounded-lg ring-1 ring-foreground/10 bg-muted"
               priority
             />
-          </div>
 
-          <div className="min-w-0 space-y-4 pt-1">
-            <div>
-              <h1 className="font-serif italic text-2xl lg:text-3xl font-light leading-snug text-foreground">
+            <div className="min-w-0 pb-1">
+              <h1 className="font-serif text-[1.75rem] xl:text-[2rem] font-medium leading-[1.08] tracking-[-0.015em] text-foreground text-balance">
                 {displayTitle}
               </h1>
               {movie.originalTitle && movie.originalTitle !== displayTitle && (
-                <p className="text-sm text-foreground/60 italic mt-1">{movie.originalTitle}</p>
+                <p className="mt-1.5 font-serif italic text-[15px] text-foreground/60">{movie.originalTitle}</p>
               )}
-              <p className="text-xs text-foreground mt-1.5 font-mono tracking-wider">
-                {movie.released?.slice(0, 4) ?? "N/A"}
-              </p>
+              {meta.length > 0 && (
+                <p className="mt-3 text-sm font-medium tabular-nums text-foreground/70">
+                  {meta.join("  ·  ")}
+                </p>
+              )}
+              {genres.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {genres.map((g) => {
+                    const isActive = activeGenres.size > 0 && activeGenres.has(toEnGenre(g) ?? "");
+                    return (
+                      <button
+                        key={g}
+                        onClick={() => { toggleStoredGenre(toEnGenre(g) ?? ""); router.push(buildBackHref("/")); }}
+                        className={[
+                          "rounded-full px-2.5 py-0.5 text-xs transition active:scale-[0.97]",
+                          isActive
+                            ? "bg-roman/15 text-roman-muted ring-1 ring-inset ring-roman/40"
+                            : "bg-foreground/[0.06] text-foreground/75 hover:bg-foreground/[0.1] hover:text-foreground",
+                        ].join(" ")}
+                      >
+                        {g}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+          </div>
 
-            <div className="space-y-2.5">
-              <div className="flex items-baseline gap-2.5">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-foreground/55 shrink-0 w-7">
-                  {t.movie.director}
-                </span>
-                <span className="text-sm text-foreground/80">{movie.director ?? "N/A"}</span>
-              </div>
-              <div className="flex items-baseline gap-2.5">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-foreground/55 shrink-0 w-7">
-                  {t.movie.cast}
-                </span>
-                <span
-                  className="text-sm text-foreground/80 leading-snug cursor-default"
-                  title={actorList.length > 3 ? actorList.join(", ") : undefined}
+          {/* Actions: trailer + audio languages */}
+          {(trailerId || showIT || showOV) && (
+            <div className="flex items-center gap-3">
+              {trailerId && (
+                <button
+                  onClick={() => setTrailerOpen(true)}
+                  className="inline-flex h-9 items-center gap-2 rounded-full bg-foreground pl-3.5 pr-4 text-sm font-medium text-background hover:bg-foreground/85 active:scale-[0.97] transition"
                 >
-                  {actorsDisplay || "N/A"}
-                </span>
-              </div>
-              <div className="flex items-center gap-2.5">
-                <span className="text-[10px] font-mono tracking-widest uppercase text-foreground/55 shrink-0 w-7">
-                  {t.movie.runtime}
-                </span>
-                <span className="text-sm text-foreground/80">
-                  {movie.durationMinutes ? `${movie.durationMinutes} min` : "N/A"}
-                </span>
+                  <Play className="size-3.5 fill-current" />
+                  {t.movie.watchTrailer}
+                </button>
+              )}
+              <div className="ml-auto flex items-center gap-1.5">
+                {showIT && (
+                  <span title="Italiano" className="inline-flex h-7 items-center gap-1.5 rounded-full bg-foreground/[0.06] px-2.5 text-xs font-medium text-foreground/75">
+                    <span className="text-sm leading-none">🇮🇹</span>ITA
+                  </span>
+                )}
+                {showOV && (
+                  <span title={movie.tmdbLanguage!.toUpperCase()} className="inline-flex h-7 items-center gap-1.5 rounded-full bg-foreground/[0.06] px-2.5 text-xs font-medium text-foreground/75">
+                    <span className="text-sm leading-none">{languageToFlag(movie.tmdbLanguage!)}</span>OV
+                  </span>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="flex flex-wrap gap-1.5">
-              {genres.length > 0 ? genres.map((g) => {
-                const isActive = activeGenres.size > 0 && activeGenres.has(toEnGenre(g) ?? "");
-                return (
-                  <button
-                    key={g}
-                    onClick={() => { toggleStoredGenre(toEnGenre(g) ?? ""); router.push(buildBackHref("/")); }}
-                    className={[
-                      "text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded border transition-colors",
-                      isActive
-                        ? "border-roman text-roman bg-roman/10"
-                        : "border-border text-muted-foreground hover:border-roman/50 hover:text-foreground",
-                    ].join(" ")}
-                  >
-                    {g}
-                  </button>
-                );
-              }) : (
-                <span className="text-[10px] font-mono tracking-wider uppercase px-2 py-0.5 rounded-sm border border-white/15 text-foreground/55">
-                  N/A
-                </span>
+          {/* Ratings — always all four, so a missing score reads as "not rated", not "forgot" */}
+          <dl className="flex divide-x divide-foreground/[0.08] rounded-xl bg-foreground/[0.035] ring-1 ring-inset ring-foreground/[0.06]">
+            {ratings.map(({ label, title, value, suffix }) => (
+              <div key={label} className="flex-auto px-4 py-3">
+                <dd className="text-xl font-semibold leading-none tabular-nums tracking-tight text-foreground">
+                  {value ? (
+                    <>
+                      {value}
+                      {suffix && <span className="ml-0.5 text-xs font-normal text-foreground/45">{suffix}</span>}
+                    </>
+                  ) : (
+                    <span className="text-base font-medium text-foreground/35">N/A</span>
+                  )}
+                </dd>
+                <dt title={title} className="mt-1.5 whitespace-nowrap text-[11px] text-foreground/55 cursor-help">{label}</dt>
+              </div>
+            ))}
+          </dl>
+
+          {/* Plot */}
+          {plot && (
+            <div>
+              <p className={`text-[15px] leading-[1.65] text-foreground/80 max-w-prose ${plotLong && !plotOpen ? "line-clamp-5" : ""}`}>
+                {plot}
+              </p>
+              {plotLong && (
+                <button
+                  onClick={() => setPlotOpen((o) => !o)}
+                  className="mt-1.5 text-sm font-medium text-foreground hover:text-roman-muted transition-colors"
+                >
+                  {plotOpen ? t.movie.less : t.movie.more}
+                </button>
               )}
             </div>
+          )}
 
-            {trailerId && (
-              <button
-                onClick={() => setTrailerOpen(true)}
-                className="inline-flex items-center gap-1.5 text-xs text-roman-muted hover:text-roman transition-colors"
-              >
-                <span className="font-mono tracking-wider uppercase">{t.movie.watchTrailer}</span>
-                <span className="text-lg leading-none">▶</span>
-              </button>
-            )}
-          </div>
-        </div>
+          {/* Credits */}
+          {(movie.director || actorList.length > 0) && (
+            <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-sm">
+              {movie.director && (
+                <>
+                  <dt className="text-foreground/50">{t.movie.directedBy}</dt>
+                  <dd className="text-foreground/85">{movie.director}</dd>
+                </>
+              )}
+              {actorList.length > 0 && (
+                <>
+                  <dt className="text-foreground/50">{t.movie.cast}</dt>
+                  <dd className="text-foreground/85 leading-relaxed">{actorList.slice(0, 6).join(", ")}</dd>
+                </>
+              )}
+            </dl>
+          )}
 
-        {/* Ratings */}
-        <div className="h-px bg-border" />
-        <div className="grid grid-cols-2 gap-x-5 gap-y-4 sm:flex sm:items-end sm:gap-5 sm:flex-wrap">
-          {[
-            { label: "TMDb",           title: "The Movie Database",       value: movie.tmdbRating,      suffix: "/10"  },
-            { label: "Rotten Tomatoes", title: "Rotten Tomatoes",         value: movie.rtRating,        suffix: undefined },
-            { label: "IMDb",           title: "Internet Movie Database",  value: movie.imdbRating,      suffix: "/10"  },
-            { label: "Metacritic",     title: "Metacritic",               value: movie.metacriticScore, suffix: "/100" },
-          ].map(({ label, title, value, suffix }) => (
-            <div key={label}>
-              <p title={title} className="text-[10px] font-mono tracking-widest uppercase text-foreground/55 mb-1 cursor-help">{label}</p>
-              <p className="text-2xl font-semibold tabular-nums text-foreground leading-none">
-                {value
-                  ? <>{value}{suffix && <span className="text-sm font-normal text-foreground/55">{suffix}</span>}</>
-                  : <span className="text-foreground/55 text-lg">—</span>}
-              </p>
+          {/* Where to watch — on desktop this lives in the schedule header */}
+          <div className="flex items-center justify-between lg:hidden">
+            <h2 className="text-sm font-medium text-foreground/70">{t.movie.whereToWatch}</h2>
+            <div className="flex items-center gap-2">
+              {markersCount > 0 && (
+                <p className="text-xs text-foreground/50 tabular-nums">{t.movie.cinemas(markersCount)}</p>
+              )}
+              {viewToggle}
             </div>
-          ))}
-          <div className="ml-auto flex flex-col items-end gap-0.5 text-xl leading-none">
-            {(() => {
-              const isItalian = movie.tmdbLanguage === "it";
-              const showIT = hasNonOV || isItalian;
-              const showOV = hasOV && !isItalian;
-              if (!showIT && !showOV) return <span className="text-sm text-foreground/55">N/A</span>;
-              return <>
-                {showIT && <span title="Italiano">🇮🇹</span>}
-                {showOV && movie.tmdbLanguage && (
-                  <span title={movie.tmdbLanguage.toUpperCase()}>{languageToFlag(movie.tmdbLanguage)}</span>
-                )}
-              </>;
-            })()}
           </div>
         </div>
-
-        {/* Plot */}
-        <div className="h-px bg-border" />
-        <p className="text-sm text-foreground/70 leading-relaxed">
-          {plot ?? <span className="italic text-foreground/50">N/A</span>}
-        </p>
-
-        {/* Where to watch */}
-        <div className="h-px bg-border" />
-        <div className="flex items-center justify-between">
-          <h2 className="text-[10px] font-mono tracking-[0.2em] uppercase text-foreground/55">
-            {t.movie.whereToWatch}
-          </h2>
-          <div className="flex items-center gap-2">
-            {markersCount > 0 && (
-              <p className="text-xs text-foreground/50 tabular-nums">
-                {t.movie.cinemas(markersCount)}
-              </p>
-            )}
-            {viewToggle}
-          </div>
-        </div>
-
       </div>
 
       {/* Trailer modal */}
@@ -282,9 +340,9 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
           onClick={() => setTrailerOpen(false)}
         >
-          <div className="absolute inset-0 bg-black/80" />
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in-0 duration-200" />
           <div
-            className="relative z-10 w-full max-w-3xl aspect-video rounded overflow-hidden border border-white/10 shadow-2xl"
+            className="relative z-10 w-full max-w-4xl aspect-video rounded-xl overflow-hidden ring-1 ring-white/10 shadow-2xl animate-in fade-in-0 zoom-in-95 duration-300 ease-out"
             onClick={(e) => e.stopPropagation()}
           >
             <button

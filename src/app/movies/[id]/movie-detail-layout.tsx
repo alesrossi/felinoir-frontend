@@ -45,36 +45,35 @@ export function MovieDetailLayout({
     try { localStorage.setItem(VIEW_KEY, v); } catch {}
   }
 
+  const viewOptions = [
+    { id: "map" as const,  label: "Map view",  Icon: Map  },
+    { id: "list" as const, label: "List view", Icon: List },
+  ];
+
+  // Segmented control: the selected segment is a raised chip on a recessed track.
   const viewToggle = markersCount > 0 ? (
-    <div className="flex items-center rounded-md border border-border overflow-hidden">
-      <button
-        onClick={() => selectView("map")}
-        aria-label="Map view"
-        className={`p-1.5 transition-colors ${
-          view === "map"
-            ? "bg-foreground/10 text-foreground"
-            : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-        }`}
-      >
-        <Map className="size-3.5" />
-      </button>
-      <button
-        onClick={() => selectView("list")}
-        aria-label="List view"
-        className={`p-1.5 transition-colors ${
-          view === "list"
-            ? "bg-foreground/10 text-foreground"
-            : "text-muted-foreground hover:text-foreground hover:bg-foreground/5"
-        }`}
-      >
-        <List className="size-3.5" />
-      </button>
+    <div className="flex items-center rounded-lg bg-foreground/[0.06] p-0.5">
+      {viewOptions.map(({ id, label, Icon }) => (
+        <button
+          key={id}
+          onClick={() => selectView(id)}
+          aria-label={label}
+          aria-pressed={view === id}
+          className={`rounded-md p-1.5 transition active:scale-[0.94] ${
+            view === id
+              ? "bg-background text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.12)]"
+              : "text-foreground/50 hover:text-foreground"
+          }`}
+        >
+          <Icon className="size-3.5" />
+        </button>
+      ))}
     </div>
   ) : null;
 
   return (
     <div className="flex flex-col lg:flex-row lg:flex-1 lg:min-h-0">
-      <div className="border-b lg:border-b-0 lg:border-r border-border lg:w-2/5 lg:overflow-y-auto">
+      <div className="border-b lg:border-b-0 lg:border-r border-border lg:w-[clamp(420px,34vw,540px)] lg:shrink-0 lg:overflow-y-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--foreground)/0.15)_transparent]">
         <MovieInfoPanel
           movie={movie}
           markersCount={filteredCinemaCount}
@@ -84,13 +83,14 @@ export function MovieDetailLayout({
           viewToggle={viewToggle}
         />
       </div>
-      <div className="h-[70dvh] lg:h-auto lg:w-3/5">
+      <div className="h-[70dvh] lg:h-auto lg:flex-1 lg:min-w-0">
         <MovieSchedulePanel
           markers={markers}
           movieTitle={movieTitle}
           movieLanguage={movieLanguage}
           view={view}
           onFilteredCountChange={setFilteredCinemaCount}
+          toolbar={viewToggle}
         />
       </div>
     </div>

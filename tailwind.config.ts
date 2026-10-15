@@ -1,5 +1,18 @@
 import type { Config } from "tailwindcss";
 
+// Per-script fallbacks (loaded in app/layout.tsx), tried in order for any
+// character the primary font lacks. Han ideographs are shared by Chinese,
+// Japanese and Korean, so SC is listed first: Chinese gets correct forms and
+// Japanese still renders (its kana is in SC too). KR goes last for Hangul.
+const scriptFallbacks = [
+  "var(--font-noto)",
+  "var(--font-noto-arabic)",
+  "var(--font-noto-devanagari)",
+  "var(--font-noto-sc)",
+  "var(--font-noto-jp)",
+  "var(--font-noto-kr)",
+];
+
 const config: Config = {
   darkMode: ["class"],
   content: [
@@ -73,9 +86,9 @@ const config: Config = {
         sm: "calc(var(--radius) - 4px)",
       },
       fontFamily: {
-        sans: ["var(--font-dm-sans)", "sans-serif"],
+        sans: ["var(--font-dm-sans)", ...scriptFallbacks, "sans-serif"],
         mono: ["var(--font-geist-mono)", "monospace"],
-        serif: ["var(--font-cormorant)", "Georgia", "Times New Roman", "serif"],
+        serif: ["var(--font-cormorant)", "Georgia", "Times New Roman", ...scriptFallbacks, "serif"],
       },
     },
   },

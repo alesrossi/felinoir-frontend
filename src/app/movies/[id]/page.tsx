@@ -66,6 +66,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+/**
+ * Pick a wide still for the page hero: textless backdrops first (no baked-in
+ * logo fighting the title), then the most-voted one.
+ */
+function pickBackdropUrl(raw?: string): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const list: { file_path?: string; iso_639_1?: string | null; vote_count?: number }[] = JSON.parse(raw);
+    const best = list
+      .filter(b => b.file_path)
+      .sort((a, b) =>
+        Number(a.iso_639_1 != null) - Number(b.iso_639_1 != null) ||
+        (b.vote_count ?? 0) - (a.vote_count ?? 0))[0];
+    return best ? `https://image.tmdb.org/t/p/w1280${best.file_path}` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** One line for the preview text under the title in a chat app. */
 function shareDescription(movie: { tmdbTagline?: string; tmdbPlot?: string; synopsis?: string }): string {
   const source = movie.tmdbTagline || movie.tmdbPlot || movie.synopsis;
@@ -155,6 +174,7 @@ export default async function MoviePage({ params }: PageProps) {
     posterUrl: movie.posterUrl,
     tmdbTrailerUrlIt: movie.tmdbTrailerUrlIt,
     tmdbTrailerUrlEn: movie.tmdbTrailerUrlEn,
+    backdropUrl: pickBackdropUrl(movie.tmdbBackdrops),
   };
 
   const displayTitle = localizedTitle(movie, SERVER_LOCALE);

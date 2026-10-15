@@ -1,6 +1,15 @@
 import type { Metadata, Viewport } from "next";
 import { GeistMono } from "geist/font/mono";
-import { Playfair_Display, DM_Sans } from "next/font/google";
+import {
+  Playfair_Display,
+  DM_Sans,
+  Noto_Sans,
+  Noto_Sans_Arabic,
+  Noto_Sans_Devanagari,
+  Noto_Sans_JP,
+  Noto_Sans_KR,
+  Noto_Sans_SC,
+} from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { LangProvider } from "@/lib/lang";
 import { ConditionalFabs } from "@/components/conditional-fabs";
@@ -22,6 +31,22 @@ const dmSans = DM_Sans({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600"],
 });
+
+// Fallbacks for scripts DM Sans can't draw (Russian titles, K-pop cast lists,
+// anime, Bollywood…). Google serves these as unicode-range slices, so a browser
+// only downloads the slices for characters actually on the page — nothing for
+// Latin-only pages. (next/font needs literal options, hence no shared object.)
+// Stack order lives in tailwind.config.ts.
+const notoSans = Noto_Sans({ variable: "--font-noto", weight: ["400", "500", "600"], preload: false });  // Cyrillic, Greek
+const notoSansArabic = Noto_Sans_Arabic({ variable: "--font-noto-arabic", weight: ["400", "500", "600"], preload: false });
+const notoSansDevanagari = Noto_Sans_Devanagari({ variable: "--font-noto-devanagari", weight: ["400", "500", "600"], preload: false });
+const notoSansSc = Noto_Sans_SC({ variable: "--font-noto-sc", weight: ["400", "500", "600"], preload: false });
+const notoSansJp = Noto_Sans_JP({ variable: "--font-noto-jp", weight: ["400", "500", "600"], preload: false });
+const notoSansKr = Noto_Sans_KR({ variable: "--font-noto-kr", weight: ["400", "500", "600"], preload: false });
+
+const fallbackFontVariables = [
+  notoSans, notoSansArabic, notoSansDevanagari, notoSansSc, notoSansJp, notoSansKr,
+].map((f) => f.variable).join(" ");
 
 export const dynamic = "force-dynamic";
 
@@ -80,7 +105,7 @@ export default async function RootLayout({
   return (
     <html
       lang="it"
-      className={`${dmSans.variable} ${GeistMono.variable} ${playfair.variable} h-full`}
+      className={`${dmSans.variable} ${GeistMono.variable} ${playfair.variable} ${fallbackFontVariables} h-full`}
       suppressHydrationWarning
     >
       <head>

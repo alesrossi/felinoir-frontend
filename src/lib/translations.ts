@@ -13,6 +13,9 @@ const en = {
   movie: {
     back: "All films",
     director: "Dir.",
+    directedBy: "Director",
+    more: "More",
+    less: "Less",
     cast: "Cast",
     runtime: "Run",
     cert: "Cert",
@@ -93,6 +96,9 @@ const it: typeof en = {
   movie: {
     back: "Tutti i film",
     director: "Reg.",
+    directedBy: "Regia",
+    more: "Altro",
+    less: "Meno",
     cast: "Cast",
     runtime: "Dur.",
     cert: "Cert.",

@@ -173,6 +173,8 @@ function DateNavigator({
   onSelectDate,
   prevDisabled,
   nextDisabled,
+  cinemaCount,
+  toolbar,
 }: {
   date: Date;
   isToday: boolean;
@@ -181,13 +183,16 @@ function DateNavigator({
   onSelectDate: (d: Date) => void;
   prevDisabled: boolean;
   nextDisabled: boolean;
+  cinemaCount: number;
+  toolbar?: React.ReactNode;
 }) {
   const { t, locale } = useLang();
   const localeStr = locale === "en" ? "en-GB" : "it-IT";
-  const weekday = date.toLocaleDateString(localeStr, { weekday: "short" }).toUpperCase();
-  const month   = date.toLocaleDateString(localeStr, { month: "short" }).toUpperCase();
+  const weekday = date.toLocaleDateString(localeStr, { weekday: "long" });
+  const month   = date.toLocaleDateString(localeStr, { month: "long" });
   const day     = date.getDate();
   const year    = date.getFullYear();
+  const showYear = year !== new Date().getFullYear();
   const inputRef = useRef<HTMLInputElement>(null);
 
   function openPicker() {
@@ -205,51 +210,55 @@ function DateNavigator({
     onSelectDate(new Date(y, mo - 1, d));
   }
 
+  const arrowClass =
+    "grid size-8 place-items-center rounded-full text-foreground/70 hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.92] disabled:opacity-20 disabled:pointer-events-none transition";
+
   return (
-    <div className="flex items-center justify-center gap-3 px-5 py-3 border-b border-border shrink-0 select-none">
-      <button
-        onClick={onPrev}
-        disabled={prevDisabled}
-        className="p-1.5 rounded-sm text-foreground hover:bg-foreground/5 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-        aria-label="Previous day"
-      >
-        <ChevronLeft className="size-4" />
-      </button>
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 h-14 px-5 lg:px-6 border-b border-border shrink-0 select-none">
+      {/* Section label (desktop — on mobile the info panel carries it) */}
+      <div className="hidden lg:flex items-baseline gap-2 min-w-0">
+        <h2 className="text-sm font-semibold text-foreground truncate">{t.movie.whereToWatch}</h2>
+        {cinemaCount > 0 && (
+          <span className="text-sm text-foreground/50 tabular-nums whitespace-nowrap">{t.movie.cinemas(cinemaCount)}</span>
+        )}
+      </div>
 
-      {/* Date display — clickable to open native date picker */}
-      <button
-        onClick={openPicker}
-        className="flex items-baseline justify-center gap-2 min-w-[140px] cursor-pointer group"
-        aria-label="Select date"
-      >
-        <span className="text-[10px] font-mono tracking-[0.15em] text-muted-foreground">
-          {weekday}
-        </span>
-        <span className="font-mono leading-none text-5xl text-foreground group-hover:text-roman-muted transition-colors">
-          {day}
-        </span>
-        <span className="text-[10px] font-mono tracking-[0.15em] text-muted-foreground">
-          {month} {!isToday && year}
-          {isToday && <span className="ml-1.5 text-roman-muted">{t.schedule.today}</span>}
-        </span>
-        <input
-          ref={inputRef}
-          type="date"
-          value={toDateStr(date)}
-          onChange={handleInputChange}
-          className="sr-only"
-          aria-hidden="true"
-        />
-      </button>
+      <div className="col-start-2 flex items-center gap-1">
+        <button onClick={onPrev} disabled={prevDisabled} className={arrowClass} aria-label={t.schedule.previous}>
+          <ChevronLeft className="size-4" />
+        </button>
 
-      <button
-        onClick={onNext}
-        disabled={nextDisabled}
-        className="p-1.5 rounded-sm text-foreground hover:bg-foreground/5 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
-        aria-label="Next day"
-      >
-        <ChevronRight className="size-4" />
-      </button>
+        {/* Date display — clickable to open native date picker */}
+        <button
+          onClick={openPicker}
+          className="relative flex items-center gap-2 rounded-full px-3 h-8 min-w-[180px] justify-center hover:bg-foreground/[0.06] active:scale-[0.98] transition"
+          aria-label="Select date"
+        >
+          <span className="text-sm font-semibold capitalize text-foreground">
+            {weekday} {day} {month}{showYear && ` ${year}`}
+          </span>
+          {isToday && (
+            <span className="rounded-full bg-roman/15 px-2 py-px text-[11px] font-semibold uppercase tracking-wide text-roman-muted">
+              {t.schedule.today}
+            </span>
+          )}
+          <input
+            ref={inputRef}
+            type="date"
+            value={toDateStr(date)}
+            onChange={handleInputChange}
+            className="sr-only"
+            aria-hidden="true"
+            tabIndex={-1}
+          />
+        </button>
+
+        <button onClick={onNext} disabled={nextDisabled} className={arrowClass} aria-label={t.schedule.next}>
+          <ChevronRight className="size-4" />
+        </button>
+      </div>
+
+      <div className="hidden lg:flex justify-end">{toolbar}</div>
     </div>
   );
 }
@@ -264,6 +273,8 @@ interface MovieSchedulePanelProps {
   movieLanguage?: string; // tmdbLanguage, e.g. "it", "en", "fr"
   view?: "map" | "list";
   onFilteredCountChange?: (count: number) => void;
+  /** Rendered at the right of the date bar on desktop (e.g. the map/list toggle). */
+  toolbar?: React.ReactNode;
 }
 
 /**
@@ -300,7 +311,7 @@ function availableDatesFor(
   return [...dates].sort();
 }
 
-export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = "map", onFilteredCountChange }: MovieSchedulePanelProps) {
+export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = "map", onFilteredCountChange, toolbar }: MovieSchedulePanelProps) {
   const { t } = useLang();
   const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
   const [selectedCinemas, setSelectedCinemas] = useState<Set<string>>(new Set());
@@ -409,6 +420,8 @@ export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = 
         onSelectDate={setSelectedDate}
         prevDisabled={prevDisabled}
         nextDisabled={nextDisabled}
+        cinemaCount={filteredMarkers.length}
+        toolbar={toolbar}
       />
 
       {/* Map or list */}
