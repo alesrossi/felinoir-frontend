@@ -217,17 +217,18 @@ export default async function Home({ searchParams }: PageProps) {
   return (
     <main id="main-content" className="min-h-screen bg-background text-foreground">
       <JsonLd data={structuredData} />
-      <div className="mx-auto max-w-6xl px-4 py-12">
+      <div className="mx-auto max-w-7xl px-4 lg:px-8 pb-12">
 
         <HomeHeader openAirIds={[...openAirCinemaIds]} />
 
         <HomeCarousels sections={carouselSections} />
 
-        <Suspense>
-          <FiltersBar totalShown={sorted.length} totalAll={homepageTotal} />
-        </Suspense>
-
         <MovieGrid
+          toolbar={
+            <Suspense>
+              <FiltersBar totalShown={sorted.length} totalAll={homepageTotal} />
+            </Suspense>
+          }
           sort={sortKey}
           movies={sorted}
           totalMovies={homepageTotal}

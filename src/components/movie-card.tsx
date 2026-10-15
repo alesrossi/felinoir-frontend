@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { X } from "lucide-react";
+import { Star, X } from "lucide-react";
 import { useRouter, usePathname } from "next/navigation";
 import { toEnGenre } from "@/lib/genres";
 import { loadStoredGenres, toggleStoredGenre, GLOBAL_FILTER_EVENT } from "@/components/global-filter-fab";
-import { Card, CardContent } from "@/components/ui/card";
 import { PosterImage } from "@/components/ui/poster-image";
 import { useLang } from "@/lib/lang";
 import { languageToFlag } from "@/lib/utils";
@@ -23,6 +22,13 @@ interface MovieCardProps {
   priority?: boolean;
 }
 
+function formatRuntime(minutes?: number): string | undefined {
+  if (!minutes) return undefined;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m} min`;
+}
+
 function PlotModal({ title, plot, onClose }: { title: string; plot: string; onClose: () => void }) {
   useEffect(() => {
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
@@ -32,18 +38,18 @@ function PlotModal({ title, plot, onClose }: { title: string; plot: string; onCl
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in-0 duration-200" />
       <div
-        className="relative z-10 w-full max-w-sm rounded-xl border border-border bg-card shadow-2xl p-6 flex flex-col max-h-[80vh]"
+        className="relative z-10 w-full max-w-sm rounded-2xl bg-popover ring-1 ring-foreground/10 shadow-2xl p-6 flex flex-col max-h-[80vh] animate-in fade-in-0 zoom-in-95 duration-200 ease-out"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4 mb-4 shrink-0">
-          <p className="font-semibold text-foreground leading-snug">{title}</p>
+          <p className="font-serif text-lg font-medium leading-tight tracking-[-0.01em] text-foreground">{title}</p>
           <button onClick={onClose} className="shrink-0 text-muted-foreground hover:text-foreground transition-colors" aria-label="Close">
             <X className="size-5" />
           </button>
         </div>
-        <p className="text-sm text-muted-foreground leading-relaxed overflow-y-auto min-h-0">{plot}</p>
+        <p className="text-sm text-foreground/75 leading-relaxed overflow-y-auto min-h-0">{plot}</p>
       </div>
     </div>
   );
@@ -93,67 +99,84 @@ export function MovieCard({ movie, screeningCount, filterParams, view = "grid", 
     });
   }
 
+  const year = movie.released?.slice(0, 4);
+  const runtime = formatRuntime(movie.durationMinutes);
+  const meta = [year, runtime, genres[0]].filter(Boolean).join(" · ");
+  const rating = movie.imdbRating ?? movie.tmdbRating;
+
+  const flags = (showIT || showOV) && (
+    <>
+      {showIT && <span title="Italiano">🇮🇹</span>}
+      {showOV && movie.tmdbLanguage && (
+        <span title={movie.tmdbLanguage.toUpperCase()}>{languageToFlag(movie.tmdbLanguage)}</span>
+      )}
+    </>
+  );
+
   if (view === "list") {
     return (
       <>
-        <div className="flex flex-row rounded-lg border border-border bg-card overflow-hidden hover:border-roman/40 transition-colors duration-200">
+        <div className="group flex flex-row gap-4 rounded-xl p-2 hover:bg-foreground/[0.04] transition-colors">
           {/* Poster — links to film */}
-          <Link href={href} className="w-[72px] sm:w-28 shrink-0 overflow-hidden group">
+          <Link href={href} className="relative w-[72px] sm:w-24 shrink-0 self-start overflow-hidden rounded-lg ring-1 ring-black/5 dark:ring-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.5)]">
             <PosterImage
               primary={movie.tmdbPosterUrl}
               fallback={movie.posterUrl}
               alt={`${displayTitle} poster`}
-              className="w-full aspect-[2/3] object-cover transition-transform duration-500 group-hover:scale-105 group-hover:brightness-90"
-              placeholderClassName="w-full aspect-[2/3]"
+              className="w-full aspect-[2/3] object-cover"
+              placeholderClassName="w-full aspect-[2/3] bg-foreground/[0.06]"
               priority={priority}
             />
           </Link>
 
           {/* Info */}
-          <div className="flex-1 min-w-0 p-2.5 sm:p-3 flex flex-col gap-1 overflow-hidden">
-            {/* Title + flags — links to film */}
-            <Link href={href} className="group flex items-start gap-1">
-              <p className="flex-1 min-w-0 text-sm font-semibold leading-snug text-foreground group-hover:text-roman-muted transition-colors line-clamp-2">
+          <div className="flex-1 min-w-0 py-1 flex flex-col gap-1.5">
+            <Link href={href} className="group/title flex items-start gap-2">
+              <p className="flex-1 min-w-0 text-[15px] font-semibold leading-snug tracking-[-0.005em] text-foreground group-hover/title:text-roman-muted transition-colors line-clamp-2">
                 {displayTitle}
               </p>
-              {(showIT || showOV) && (
-                <div className="flex items-center gap-0.5 shrink-0 text-sm leading-none mt-0.5">
-                  {showIT && <span title="Italiano">🇮🇹</span>}
-                  {showOV && movie.tmdbLanguage && (
-                    <span title={movie.tmdbLanguage.toUpperCase()}>{languageToFlag(movie.tmdbLanguage)}</span>
-                  )}
-                </div>
-              )}
+              {flags && <span className="flex items-center gap-0.5 shrink-0 text-sm leading-none mt-0.5">{flags}</span>}
             </Link>
 
+            <p className="text-xs tabular-nums text-foreground/55">
+              {[year, runtime].filter(Boolean).join(" · ")}
+              {rating && (
+                <span className="ml-2 inline-flex items-center gap-0.5 font-semibold text-foreground/75">
+                  <Star className="size-3 fill-amber-400 text-amber-400" />{rating}
+                </span>
+              )}
+            </p>
+
             {/* Genre tags */}
-            <div className="flex items-center gap-1 flex-wrap overflow-hidden">
-              {genres.map(g => {
-                const isActive = activeGenres.size > 0 && activeGenres.has(toEnGenre(g) ?? "");
-                return (
-                  <button
-                    key={g}
-                    onClick={(e) => handleGenreClick(e, g)}
-                    className={[
-                      "text-[9px] font-mono uppercase tracking-wider px-1 py-0.5 rounded truncate max-w-[80px] border transition-colors",
-                      isActive
-                        ? "border-roman text-roman"
-                        : "text-muted-foreground bg-muted/40 border-border hover:border-roman/50 hover:text-foreground",
-                    ].join(" ")}
-                  >
-                    {g}
-                  </button>
-                );
-              })}
-            </div>
+            {genres.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {genres.map(g => {
+                  const isActive = activeGenres.size > 0 && activeGenres.has(toEnGenre(g) ?? "");
+                  return (
+                    <button
+                      key={g}
+                      onClick={(e) => handleGenreClick(e, g)}
+                      className={[
+                        "rounded-full px-2 py-0.5 text-[11px] transition active:scale-[0.96]",
+                        isActive
+                          ? "bg-roman/15 text-roman-muted ring-1 ring-inset ring-roman/40"
+                          : "bg-foreground/[0.06] text-foreground/70 hover:bg-foreground/[0.1] hover:text-foreground",
+                      ].join(" ")}
+                    >
+                      {g}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Plot — opens modal, does NOT navigate */}
             {plot && (
               <button
                 onClick={() => setPlotOpen(true)}
-                className="text-left mt-0.5 group/plot focus:outline-none"
+                className="text-left group/plot focus:outline-none"
               >
-                <p className="text-[11px] sm:text-xs leading-snug text-muted-foreground line-clamp-3 group-hover/plot:text-foreground/80 transition-colors">
+                <p className="text-xs leading-relaxed text-foreground/60 line-clamp-2 group-hover/plot:text-foreground/85 transition-colors">
                   {plot}
                 </p>
               </button>
@@ -168,41 +191,45 @@ export function MovieCard({ movie, screeningCount, filterParams, view = "grid", 
     );
   }
 
-  // Grid view — standard poster card
+  // Grid view — poster card: rating + languages float on the poster as glass
+  // chips, the plot rises over the poster on hover.
   return (
     <Link href={href} className="group block focus:outline-none">
-      <Card className="h-full overflow-hidden transition-colors duration-200 group-hover:border-roman/40 group-focus-visible:border-roman/60">
-        <div className="relative aspect-[2/3] w-full overflow-hidden bg-card">
-          <PosterImage
-            primary={movie.tmdbPosterUrl}
-            fallback={movie.posterUrl}
-            alt=""
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 group-hover:brightness-90"
-            placeholderClassName="h-full w-full"
-            priority={priority}
-          />
-        </div>
-        <CardContent className="p-3 space-y-1">
-          <div className="flex items-start gap-1">
-            <p className="flex-1 min-w-0 text-sm font-medium leading-snug text-foreground/80 group-hover:text-foreground transition-colors line-clamp-2">
-              {displayTitle}
-            </p>
-            {(showIT || showOV) && (
-              <div className="flex items-center gap-0.5 shrink-0 text-sm leading-none mt-0.5">
-                {showIT && <span title="Italiano">🇮🇹</span>}
-                {showOV && movie.tmdbLanguage && (
-                  <span title={movie.tmdbLanguage.toUpperCase()}>{languageToFlag(movie.tmdbLanguage)}</span>
-                )}
-              </div>
-            )}
+      <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-foreground/[0.06] ring-1 ring-black/5 dark:ring-white/10 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.55)] transition duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_22px_40px_-18px_rgba(0,0,0,0.6)] group-active:scale-[0.98] group-focus-visible:ring-2 group-focus-visible:ring-roman motion-reduce:transform-none">
+        <PosterImage
+          primary={movie.tmdbPosterUrl}
+          fallback={movie.posterUrl}
+          alt=""
+          className="h-full w-full object-cover"
+          placeholderClassName="h-full w-full"
+          priority={priority}
+        />
+
+        {rating && (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/50 px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold tabular-nums text-white backdrop-blur-md">
+            <Star className="size-2.5 sm:size-3 fill-amber-400 text-amber-400" />
+            {rating}
+          </span>
+        )}
+        {flags && (
+          <span className="absolute right-2 top-2 inline-flex items-center gap-0.5 rounded-full bg-black/50 px-1.5 py-0.5 text-[11px] leading-none backdrop-blur-md">
+            {flags}
+          </span>
+        )}
+
+        {plot && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 hidden sm:block bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3 pt-12 opacity-0 translate-y-2 transition duration-300 ease-out group-hover:opacity-100 group-hover:translate-y-0 motion-reduce:translate-y-0">
+            <p className="text-xs leading-relaxed text-white/90 line-clamp-5">{plot}</p>
           </div>
-          {movie.originalTitle && movie.originalTitle !== displayTitle && (
-            <p className="text-xs text-muted-foreground italic line-clamp-1">
-              {movie.originalTitle}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </div>
+
+      <div className="mt-2.5 px-0.5">
+        <p className="text-xs sm:text-[15px] font-semibold leading-snug tracking-[-0.005em] text-foreground line-clamp-2 group-hover:text-roman-muted transition-colors">
+          {displayTitle}
+        </p>
+        {meta && <p className="mt-0.5 hidden sm:block text-xs tabular-nums text-foreground/55 truncate">{meta}</p>}
+      </div>
     </Link>
   );
 }

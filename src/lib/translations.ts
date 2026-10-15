@@ -9,6 +9,7 @@ const en = {
     noMatchHint: "Try adjusting the search, cinema, or date",
     discoverOpenAir: "Discover open air cinemas",
     discoverOpenAirShort: "Open Air",
+    allFilms: "All films",
   },
   movie: {
     back: "All films",
@@ -100,6 +101,7 @@ const it: typeof en = {
     noMatchHint: "Prova a modificare la ricerca, il cinema o la data",
     discoverOpenAir: "Scopri i cinema all'aperto",
     discoverOpenAirShort: "All'aperto",
+    allFilms: "Tutti i film",
   },
   movie: {
     back: "Tutti i film",

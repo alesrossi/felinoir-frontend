@@ -78,47 +78,46 @@ export function FiltersBar({ totalShown, totalAll }: FiltersBarProps) {
     totalShown !== totalAll;
 
   return (
-    <>
+    // On phones this wrapper dissolves (`contents`) so its pieces join the
+    // toolbar row: title + view toggle on line one, search full-width below.
+    <div className="flex flex-1 min-w-0 items-center gap-4 max-sm:contents">
+      {/* Title + result count */}
+      <div className="min-w-0 mr-auto max-sm:order-1 max-sm:flex-1">
+        <h2 className="text-lg font-semibold tracking-[-0.01em] text-foreground">{t.home.allFilms}</h2>
+        <p className="text-sm tabular-nums text-foreground/55 truncate">
+          {isFiltered ? t.filters.ofFilms(totalShown, totalAll) : t.filters.filmsInCity(totalAll)}
+          {isFiltered && (
+            <button
+              onClick={clearAll}
+              className="ml-2 inline-flex items-center gap-0.5 font-medium text-roman-muted hover:text-roman transition-colors"
+            >
+              <X className="size-3" /> {t.filters.clearAll}
+            </button>
+          )}
+        </p>
+      </div>
+
       {/* Search */}
-      <div className="relative mb-3">
-        <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+      <div className="relative w-full max-w-[18rem] max-sm:order-3 max-sm:max-w-none max-sm:basis-full">
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-foreground/45" />
         <input
           type="text"
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           placeholder={t.filters.search}
           aria-label={t.filters.search}
-          className="w-full rounded-sm border border-border bg-card pl-9 pr-9 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-roman/60 focus:border-roman/50 transition-colors"
+          className="h-10 w-full rounded-full bg-foreground/[0.06] pl-10 pr-9 text-sm text-foreground placeholder:text-foreground/45 focus:outline-none focus:bg-background focus:ring-2 focus:ring-roman/40 transition"
         />
         {search && (
           <button
             onClick={clearSearch}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 grid size-6 place-items-center rounded-full text-foreground/50 hover:bg-foreground/[0.08] hover:text-foreground transition"
             aria-label="Clear search"
           >
-            <X className="size-4" />
+            <X className="size-3.5" />
           </button>
         )}
       </div>
-
-      {/* Result count */}
-      <div className="flex items-center justify-between mb-8">
-        <p className="text-sm text-muted-foreground">
-          {isFiltered ? (
-            <span className="text-foreground font-medium">{t.filters.ofFilms(totalShown, totalAll)}</span>
-          ) : (
-            <span className="text-foreground font-medium">{t.filters.filmsInCity(totalAll)}</span>
-          )}
-        </p>
-        {isFiltered && (
-          <button
-            onClick={clearAll}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
-          >
-            <X className="size-3" /> {t.filters.clearAll}
-          </button>
-        )}
-      </div>
-    </>
+    </div>
   );
 }
