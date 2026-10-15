@@ -1,0 +1,15 @@
+# Installed fresh by `npm ci` inside the image. Copying the host's copy would
+# overwrite it (`COPY . .`) with binaries built for the wrong libc.
+node_modules
+
+# Build output and caches — the image builds its own.
+.next
+*.tsbuildinfo
+
+# Not needed to build
+.git
+.claude
+.idea
+npm-debug.log*
+Dockerfile
+.dockerignore

@@ -6,10 +6,14 @@ import {
   Noto_Sans,
   Noto_Sans_Arabic,
   Noto_Sans_Devanagari,
-  Noto_Sans_JP,
-  Noto_Sans_KR,
-  Noto_Sans_SC,
 } from "next/font/google";
+// CJK fallbacks come from npm, not next/font: Google splits each into ~100
+// unicode-range files per weight, and next/font downloads all of them at build
+// time (~1,100 requests for the three) — enough to make Docker builds fail.
+// Fontsource ships the same slices, variable-weight, straight from node_modules.
+import "@fontsource-variable/noto-sans-sc";
+import "@fontsource-variable/noto-sans-jp";
+import "@fontsource-variable/noto-sans-kr";
 import { ThemeProvider } from "next-themes";
 import { LangProvider } from "@/lib/lang";
 import { ConditionalFabs } from "@/components/conditional-fabs";
@@ -36,16 +40,13 @@ const dmSans = DM_Sans({
 // anime, Bollywood…). Google serves these as unicode-range slices, so a browser
 // only downloads the slices for characters actually on the page — nothing for
 // Latin-only pages. (next/font needs literal options, hence no shared object.)
-// Stack order lives in tailwind.config.ts.
+// Stack order lives in tailwind.config.ts; the CJK variables are set in globals.css.
 const notoSans = Noto_Sans({ variable: "--font-noto", weight: ["400", "500", "600"], preload: false });  // Cyrillic, Greek
 const notoSansArabic = Noto_Sans_Arabic({ variable: "--font-noto-arabic", weight: ["400", "500", "600"], preload: false });
 const notoSansDevanagari = Noto_Sans_Devanagari({ variable: "--font-noto-devanagari", weight: ["400", "500", "600"], preload: false });
-const notoSansSc = Noto_Sans_SC({ variable: "--font-noto-sc", weight: ["400", "500", "600"], preload: false });
-const notoSansJp = Noto_Sans_JP({ variable: "--font-noto-jp", weight: ["400", "500", "600"], preload: false });
-const notoSansKr = Noto_Sans_KR({ variable: "--font-noto-kr", weight: ["400", "500", "600"], preload: false });
 
 const fallbackFontVariables = [
-  notoSans, notoSansArabic, notoSansDevanagari, notoSansSc, notoSansJp, notoSansKr,
+  notoSans, notoSansArabic, notoSansDevanagari,
 ].map((f) => f.variable).join(" ");
 
 export const dynamic = "force-dynamic";

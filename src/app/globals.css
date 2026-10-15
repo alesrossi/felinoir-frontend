@@ -42,6 +42,12 @@
     --cyan-foreground: 0 0% 6%;
 
     --radius: 0.25rem;
+
+    /* CJK fallbacks (Fontsource, imported in layout.tsx) — same role as the
+       --font-noto-* variables next/font sets for the other scripts. */
+    --font-noto-sc: "Noto Sans SC Variable";
+    --font-noto-jp: "Noto Sans JP Variable";
+    --font-noto-kr: "Noto Sans KR Variable";
   }
 
   .light {
