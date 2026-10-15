@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { SlidersHorizontal, X, Calendar, ArrowUpDown, MapPin, Languages, ChevronDown, Search, Clock, Star, Tag, Trees } from "lucide-react";
+import { SlidersHorizontal, X, Calendar, ArrowUpDown, MapPin, Languages, ChevronDown, Search, Clock, Star, Tag, Trees, Check, Minus, Sunrise, Sun, Sunset, Moon, MoonStar } from "lucide-react";
 import { ALL_GENRES, getGenreLabel } from "@/lib/genres";
 import { TIME_RANGES } from "@/lib/time-ranges";
 import { useLang } from "@/lib/lang";
@@ -406,6 +406,22 @@ export function GlobalFilterFab({
 
   const activeCount = selectedCinemas.size + selectedDates.size + selectedTimes.size + selectedGenres.size + (sort !== "listings" ? 1 : 0) + (ov ? 1 : 0);
 
+  // Per-section resets — same effect as before, now proper buttons rather than
+  // clickable spans nested inside the section toggles.
+  function clearCinemas() { setSelectedCinemas(new Set()); save({ cinemas: undefined }); applyToUrl(new Set(), selectedDates, selectedTimes, sort, ov); }
+  function clearDates()   { setSelectedDates(new Set());   save({ dates: undefined });   applyToUrl(selectedCinemas, new Set(), selectedTimes, sort, ov); }
+  function clearTimes()   { setSelectedTimes(new Set());   save({ times: undefined });   applyToUrl(selectedCinemas, selectedDates, new Set(), sort, ov); }
+  function clearGenres()  { setSelectedGenres(new Set());  save({ genres: undefined });  applyToUrl(selectedCinemas, selectedDates, selectedTimes, sort, ov, new Set()); }
+
+  const sortOptions = [
+    { value: "listings",       label: t.filters.mostScreenings },
+    { value: "alpha",          label: t.filters.alphabetical },
+    { value: "popularityDesc", label: t.filters.popularityDesc },
+    { value: "popularityAsc",  label: t.filters.popularityAsc },
+  ];
+
+  const visibleOtherCinemas = otherCinemas.filter(c => c.name.toLowerCase().includes(cinemaSearch.toLowerCase()));
+
   return (
     <>
       {/* ── FAB ── */}
@@ -431,300 +447,379 @@ export function GlobalFilterFab({
         </button>
       )}
 
-      {/* ── Backdrop ── */}
+      {/* ── Scrim ── */}
       <div
         aria-hidden="true"
         className={[
-          "fixed inset-0 z-40 bg-black/50 transition-opacity duration-300",
+          "fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300",
           open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none",
         ].join(" ")}
         onClick={() => setOpen(false)}
       />
 
-      {/* ── Drawer (slides from left) ── */}
+      {/* ── Sheet — floats in from the left, where its button lives ── */}
       <aside
         ref={drawerRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t.filters.title}
+        aria-hidden={!open}
+        inert={!open}
         className={[
-          "fixed inset-y-0 left-0 z-50 flex flex-col",
-          "w-4/5 sm:w-72",
-          "bg-popover border-r border-border shadow-2xl",
-          "transform transition-transform duration-300 ease-in-out",
-          open ? "translate-x-0" : "-translate-x-full",
+          "fixed inset-y-2 left-2 sm:inset-y-3 sm:left-3 z-50 flex flex-col",
+          "w-[calc(100%-1rem)] max-w-[23rem] overflow-hidden rounded-2xl",
+          // Mostly opaque so text stays legible even where blur isn't rendered;
+          // fully solid when the user asks the OS for reduced transparency.
+          "bg-popover/95 backdrop-blur-2xl backdrop-saturate-150 [@media(prefers-reduced-transparency:reduce)]:bg-popover",
+          "ring-1 ring-foreground/10 shadow-[0_24px_64px_-16px_rgba(0,0,0,0.45)]",
+          "transition-[transform,opacity] duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)]",
+          "motion-reduce:transition-opacity motion-reduce:duration-200",
+          open
+            ? "translate-x-0 opacity-100"
+            : "-translate-x-[calc(100%+1rem)] opacity-0 motion-reduce:translate-x-0 pointer-events-none",
         ].join(" ")}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-5 border-b border-border shrink-0">
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-mono tracking-[0.2em] uppercase text-muted-foreground">{t.filters.title}</span>
-            {activeCount > 0 && (
-              <button
-                onClick={clearAll}
-                className="text-xs text-roman-muted/70 hover:text-roman-muted transition-colors flex items-center gap-1"
-              >
-                <X className="size-3" /> {t.filters.clearAll}
-              </button>
+        <div className="flex items-center justify-between px-5 h-14 shrink-0">
+          <h2 className="text-lg font-semibold tracking-[-0.01em] text-foreground">
+            {t.filters.title}
+            {mounted && activeCount > 0 && (
+              <span className="ml-2 text-sm font-medium tabular-nums text-foreground/45">{activeCount}</span>
             )}
-          </div>
-          <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground transition-colors" aria-label="Close">
-            <X className="size-5" />
+          </h2>
+          <button
+            onClick={() => setOpen(false)}
+            aria-label="Close"
+            className="grid size-8 place-items-center rounded-full bg-foreground/[0.06] text-foreground/60 hover:bg-foreground/[0.1] hover:text-foreground active:scale-[0.92] transition"
+          >
+            <X className="size-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-8">
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 pb-6 space-y-7 [scrollbar-width:thin] [scrollbar-color:hsl(var(--foreground)/0.15)_transparent]">
 
-          {/* Cinemas */}
-          <section>
-            <button
-              onClick={() => setCinemasOpen(o => !o)}
-              aria-expanded={cinemasOpen}
-              className="flex items-center gap-2 w-full text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3 hover:text-foreground transition-colors"
-            >
-              <MapPin className="size-3.5" /> {t.filters.cinema}
-              {selectedCinemas.size > 0 && (
-                <span
-                  onClick={(e) => { e.stopPropagation(); setSelectedCinemas(new Set()); save({ cinemas: undefined }); applyToUrl(new Set(), selectedDates, selectedTimes, sort, ov); }}
-                  className="ml-auto text-[10px] normal-case tracking-normal text-roman-muted/70 hover:text-roman-muted transition-colors cursor-pointer"
-                >
-                  {t.filters.clear}
-                </span>
-              )}
-              <ChevronDown className={`size-3.5 transition-transform duration-200 ${selectedCinemas.size > 0 ? "" : "ml-auto"} ${cinemasOpen ? "rotate-180" : ""}`} />
-            </button>
-            {cinemasOpen && (
-              <fieldset className="border-0 p-0 m-0 min-w-0">
-                <legend className="sr-only">{t.filters.cinema}</legend>
+          {/* When — days as chips */}
+          <FilterSection
+            icon={<Calendar className="size-3.5" />}
+            title={t.filters.when}
+            count={selectedDates.size}
+            open={datesOpen}
+            onToggle={() => setDatesOpen(o => !o)}
+            onClear={clearDates}
+            clearLabel={t.filters.clear}
+          >
+            <fieldset className="grid grid-cols-4 gap-1.5 border-0 p-0 m-0 min-w-0">
+              <legend className="sr-only">{t.filters.date}</legend>
+              {days.map(d => (
+                <Chip key={d.iso} checked={selectedDates.has(d.iso)} onChange={() => toggleDate(d.iso)} className={d.iso === days[0].iso || d.iso === days[1].iso ? "col-span-2" : ""}>
+                  <span className="capitalize">{d.label}</span>
+                </Chip>
+              ))}
+            </fieldset>
+          </FilterSection>
 
-                {/* Favourites block */}
-                {favouriteCinemas.length > 0 && (
-                  <div className="mb-3 rounded-md border border-border overflow-hidden">
-                    <label className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-foreground/5 transition-colors bg-foreground/5">
-                      <input
-                        ref={groupCheckRef}
-                        type="checkbox"
-                        checked={allFavsSelected}
-                        onChange={toggleAllFavourites}
-                        className="size-4 rounded border-border accent-[#980328]"
-                      />
-                      <Star className="size-3.5 fill-roman text-roman shrink-0" />
-                      <span className={`text-xs font-semibold uppercase tracking-widest ${allFavsSelected || someFavsSelected ? "text-foreground" : "text-muted-foreground"}`}>
-                        {t.filters.favourites}
-                      </span>
-                    </label>
-                    <div className="border-t border-border">
-                      {favouriteCinemas.map(c => (
-                        <label key={c.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-foreground/5 transition-colors text-sm border-b border-border last:border-0">
-                          <input type="checkbox" checked={selectedCinemas.has(c.id)} onChange={() => toggleCinema(c.id)} className="size-4 rounded border-border accent-[#980328]" />
-                          <span className={selectedCinemas.has(c.id) ? "text-foreground" : "text-muted-foreground"}>{c.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Open-air block */}
-                {openAirCinemas.length > 0 && (
-                  <div className="mb-3 rounded-md border border-green-700/30 overflow-hidden">
-                    <label className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-foreground/5 transition-colors bg-foreground/5">
-                      <input
-                        ref={openAirGroupRef}
-                        type="checkbox"
-                        checked={allOpenAirSelected}
-                        onChange={toggleAllOpenAir}
-                        className="size-4 rounded border-border accent-[#15803d]"
-                      />
-                      <Trees className="size-3.5 text-green-700 shrink-0" />
-                      <span className={`text-xs font-semibold uppercase tracking-widest ${allOpenAirSelected || someOpenAirSelected ? "text-foreground" : "text-muted-foreground"}`}>
-                        {t.filters.openAir}
-                      </span>
-                    </label>
-                    <div className="border-t border-green-700/20">
-                      {openAirCinemas.map(c => (
-                        <label key={c.id} className="flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-foreground/5 transition-colors text-sm border-b border-border last:border-0">
-                          <input type="checkbox" checked={selectedCinemas.has(c.id)} onChange={() => toggleCinema(c.id)} className="size-4 rounded border-border accent-[#15803d]" />
-                          <span className={selectedCinemas.has(c.id) ? "text-foreground" : "text-muted-foreground"}>{c.name}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Search + remaining cinemas */}
-                <div className="relative mb-2">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={cinemaSearch}
-                    onChange={e => setCinemaSearch(e.target.value)}
-                    placeholder={t.filters.searchCinema}
-                    aria-label={t.filters.searchCinema}
-                    className="w-full rounded-sm border border-border bg-background/50 pl-8 pr-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-roman/60 transition-colors"
-                  />
-                  {cinemaSearch && (
-                    <button
-                      onClick={() => setCinemaSearch("")}
-                      aria-label={t.filters.clear}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <X className="size-3.5" />
-                    </button>
-                  )}
-                </div>
-                <div className="space-y-0.5">
-                  {otherCinemas
-                    .filter(c => c.name.toLowerCase().includes(cinemaSearch.toLowerCase()))
-                    .map(c => (
-                      <label key={c.id} className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-foreground/5 transition-colors text-sm">
-                        <input type="checkbox" checked={selectedCinemas.has(c.id)} onChange={() => toggleCinema(c.id)} className="size-4 rounded border-border accent-[#980328]" />
-                        <span className={selectedCinemas.has(c.id) ? "text-foreground" : "text-muted-foreground"}>{c.name}</span>
-                      </label>
-                    ))
-                  }
-                </div>
-              </fieldset>
-            )}
-          </section>
-
-          {/* Dates */}
-          <section>
-            <button
-              onClick={() => setDatesOpen(o => !o)}
-              aria-expanded={datesOpen}
-              className="flex items-center gap-2 w-full text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3 hover:text-foreground transition-colors"
-            >
-              <Calendar className="size-3.5" /> {t.filters.date}
-              {selectedDates.size > 0 && (
-                <span
-                  onClick={(e) => { e.stopPropagation(); setSelectedDates(new Set()); save({ dates: undefined }); applyToUrl(selectedCinemas, new Set(), selectedTimes, sort, ov); }}
-                  className="ml-auto text-[10px] normal-case tracking-normal text-roman-muted/70 hover:text-roman-muted transition-colors cursor-pointer"
-                >
-                  {t.filters.clear}
-                </span>
-              )}
-              <ChevronDown className={`size-3.5 transition-transform duration-200 ${selectedDates.size > 0 ? "" : "ml-auto"} ${datesOpen ? "rotate-180" : ""}`} />
-            </button>
-            {datesOpen && (
-              <fieldset className="border-0 p-0 m-0 min-w-0">
-                <legend className="sr-only">{t.filters.date}</legend>
-                <div className="space-y-0.5">
-                  {days.map(d => (
-                    <label key={d.iso} className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-foreground/5 transition-colors text-sm">
-                      <input type="checkbox" checked={selectedDates.has(d.iso)} onChange={() => toggleDate(d.iso)} className="size-4 rounded border-border accent-[#980328]" />
-                      <span className={selectedDates.has(d.iso) ? "text-foreground" : "text-muted-foreground"}>{d.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-          </section>
-
-          {/* Time ranges */}
-          <section>
-            <button
-              onClick={() => setTimesOpen(o => !o)}
-              aria-expanded={timesOpen}
-              className="flex items-center gap-2 w-full text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3 hover:text-foreground transition-colors"
-            >
-              <Clock className="size-3.5" /> {t.filters.timeRange}
-              {selectedTimes.size > 0 && (
-                <span
-                  onClick={(e) => { e.stopPropagation(); setSelectedTimes(new Set()); save({ times: undefined }); applyToUrl(selectedCinemas, selectedDates, new Set(), sort, ov); }}
-                  className="ml-auto text-[10px] normal-case tracking-normal text-roman-muted/70 hover:text-roman-muted transition-colors cursor-pointer"
-                >
-                  {t.filters.clear}
-                </span>
-              )}
-              <ChevronDown className={`size-3.5 transition-transform duration-200 ${selectedTimes.size > 0 ? "" : "ml-auto"} ${timesOpen ? "rotate-180" : ""}`} />
-            </button>
-            {timesOpen && (
-              <fieldset className="border-0 p-0 m-0 min-w-0">
-                <legend className="sr-only">{t.filters.timeRange}</legend>
-                <div className="space-y-0.5">
-                  {TIME_RANGES.map(r => (
-                    <label key={r.id} className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-foreground/5 transition-colors text-sm">
-                      <input type="checkbox" checked={selectedTimes.has(r.id)} onChange={() => toggleTime(r.id)} className="size-4 rounded border-border accent-[#980328]" />
-                      <span className={selectedTimes.has(r.id) ? "text-foreground" : "text-muted-foreground"}>{r.label}</span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-            )}
-          </section>
-
-          {/* Genre */}
-          <section>
-            <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-              <Tag className="size-3.5" /> {t.filters.genre}
-              {selectedGenres.size > 0 && (
-                <span
-                  onClick={() => { setSelectedGenres(new Set()); save({ genres: undefined }); applyToUrl(selectedCinemas, selectedDates, selectedTimes, sort, ov, new Set()); }}
-                  className="ml-auto text-[10px] normal-case tracking-normal text-roman-muted/70 hover:text-roman-muted transition-colors cursor-pointer"
-                >
-                  {t.filters.clear}
-                </span>
-              )}
-            </h3>
-            <div className="flex flex-wrap gap-1.5">
-              {ALL_GENRES.map(g => {
-                const active = selectedGenres.has(g);
+          {/* Time — named slots with their hours */}
+          <FilterSection
+            icon={<Clock className="size-3.5" />}
+            title={t.filters.timeRange}
+            count={selectedTimes.size}
+            open={timesOpen}
+            onToggle={() => setTimesOpen(o => !o)}
+            onClear={clearTimes}
+            clearLabel={t.filters.clear}
+          >
+            <fieldset className="grid grid-cols-2 gap-1.5 border-0 p-0 m-0 min-w-0">
+              <legend className="sr-only">{t.filters.timeRange}</legend>
+              {TIME_RANGES.map((r, i) => {
+                const Icon = TIME_ICONS[r.id] ?? Clock;
                 return (
-                  <button
-                    key={g}
-                    onClick={() => toggleGenre(g)}
-                    className={[
-                      "text-[10px] font-mono uppercase tracking-wider px-2 py-1 rounded border transition-colors",
-                      active
-                        ? "border-roman text-roman bg-roman/10"
-                        : "border-border text-muted-foreground hover:border-roman/50 hover:text-foreground",
-                    ].join(" ")}
+                  <Chip
+                    key={r.id}
+                    checked={selectedTimes.has(r.id)}
+                    onChange={() => toggleTime(r.id)}
+                    className={`!justify-start text-left px-3 py-2 ${i === TIME_RANGES.length - 1 && TIME_RANGES.length % 2 === 1 ? "col-span-2" : ""}`}
                   >
-                    {getGenreLabel(g, locale)}
-                  </button>
+                    <Icon className="size-4 shrink-0 opacity-70" />
+                    <span className="min-w-0">
+                      <span className="block text-[13px] font-medium leading-tight">{t.filters.timeNames[r.id] ?? r.label}</span>
+                      <span className="block text-[11px] tabular-nums opacity-60 leading-tight">{r.label}</span>
+                    </span>
+                  </Chip>
                 );
               })}
-            </div>
-          </section>
-
-          {/* Original version */}
-          <section>
-            <label className="flex items-center justify-between px-3 py-2.5 rounded-md cursor-pointer hover:bg-foreground/5 transition-colors">
-              <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                <Languages className="size-3.5" /> {t.filters.originalVersionOnly}
-              </span>
-              <input
-                type="checkbox"
-                checked={ov}
-                onChange={toggleOV}
-                className="size-4 rounded border-border accent-[#980328]"
-              />
-            </label>
-          </section>
-
-          {/* Sort */}
-          <section>
-            <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-3">
-              <ArrowUpDown className="size-3.5" /> {t.filters.orderBy}
-            </h3>
-            <fieldset className="border-0 p-0 m-0 min-w-0">
-              <legend className="sr-only">{t.filters.orderBy}</legend>
-              <div className="space-y-0.5">
-                {[
-                { value: "listings", label: t.filters.mostScreenings },
-                { value: "alpha", label: t.filters.alphabetical },
-                { value: "popularityDesc", label: t.filters.popularityDesc },
-                { value: "popularityAsc", label: t.filters.popularityAsc },
-              ].map(({ value, label }) => (
-                  <label key={value} className="flex items-center gap-3 px-3 py-2.5 rounded-md cursor-pointer hover:bg-foreground/5 transition-colors text-sm">
-                    <input type="radio" name="global-sort" value={value} checked={sort === value} onChange={() => changeSort(value)} className="accent-[#980328]" />
-                    <span className={sort === value ? "text-foreground" : "text-muted-foreground"}>{label}</span>
-                  </label>
-                ))}
-              </div>
             </fieldset>
-          </section>
+          </FilterSection>
 
+          {/* Where — favourites, open air, then everything else */}
+          <FilterSection
+            icon={<MapPin className="size-3.5" />}
+            title={t.filters.cinema}
+            count={selectedCinemas.size}
+            open={cinemasOpen}
+            onToggle={() => setCinemasOpen(o => !o)}
+            onClear={clearCinemas}
+            clearLabel={t.filters.clear}
+          >
+            <fieldset className="border-0 p-0 m-0 min-w-0 space-y-3">
+              <legend className="sr-only">{t.filters.cinema}</legend>
+
+              {favouriteCinemas.length > 0 && (
+                <div className="overflow-hidden rounded-xl bg-foreground/[0.04]">
+                  <CheckRow
+                    inputRef={groupCheckRef}
+                    checked={allFavsSelected}
+                    mixed={someFavsSelected && !allFavsSelected}
+                    onChange={toggleAllFavourites}
+                    strong
+                  >
+                    <Star className="size-3.5 fill-amber-400 text-amber-400 shrink-0" />
+                    {t.filters.favourites}
+                  </CheckRow>
+                  {favouriteCinemas.map(c => (
+                    <CheckRow key={c.id} checked={selectedCinemas.has(c.id)} onChange={() => toggleCinema(c.id)} inset>
+                      {c.name}
+                    </CheckRow>
+                  ))}
+                </div>
+              )}
+
+              {openAirCinemas.length > 0 && (
+                <div className="overflow-hidden rounded-xl bg-foreground/[0.04]">
+                  <CheckRow
+                    inputRef={openAirGroupRef}
+                    checked={allOpenAirSelected}
+                    mixed={someOpenAirSelected && !allOpenAirSelected}
+                    onChange={toggleAllOpenAir}
+                    tone="green"
+                    strong
+                  >
+                    <Trees className="size-3.5 text-green-600 shrink-0" />
+                    {t.filters.openAir}
+                  </CheckRow>
+                  {openAirCinemas.map(c => (
+                    <CheckRow key={c.id} checked={selectedCinemas.has(c.id)} onChange={() => toggleCinema(c.id)} tone="green" inset>
+                      {c.name}
+                    </CheckRow>
+                  ))}
+                </div>
+              )}
+
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-foreground/45" />
+                <input
+                  type="text"
+                  value={cinemaSearch}
+                  onChange={e => setCinemaSearch(e.target.value)}
+                  placeholder={t.filters.searchCinema}
+                  aria-label={t.filters.searchCinema}
+                  className="h-9 w-full rounded-full bg-foreground/[0.06] pl-8 pr-8 text-sm text-foreground placeholder:text-foreground/45 focus:outline-none focus:bg-background focus:ring-2 focus:ring-roman/40 transition"
+                />
+                {cinemaSearch && (
+                  <button
+                    onClick={() => setCinemaSearch("")}
+                    aria-label={t.filters.clear}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 grid size-6 place-items-center rounded-full text-foreground/50 hover:bg-foreground/[0.08] hover:text-foreground transition"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {visibleOtherCinemas.length > 0 && (
+                <div className="overflow-hidden rounded-xl bg-foreground/[0.04]">
+                  {visibleOtherCinemas.map(c => (
+                    <CheckRow key={c.id} checked={selectedCinemas.has(c.id)} onChange={() => toggleCinema(c.id)}>
+                      {c.name}
+                    </CheckRow>
+                  ))}
+                </div>
+              )}
+            </fieldset>
+          </FilterSection>
+
+          {/* Genre */}
+          <FilterSection
+            icon={<Tag className="size-3.5" />}
+            title={t.filters.genre}
+            count={selectedGenres.size}
+            onClear={clearGenres}
+            clearLabel={t.filters.clear}
+          >
+            <div className="flex flex-wrap gap-1.5">
+              {ALL_GENRES.map(g => (
+                <Chip key={g} checked={selectedGenres.has(g)} onChange={() => toggleGenre(g)} className="!rounded-full px-3 py-1.5">
+                  {getGenreLabel(g, locale)}
+                </Chip>
+              ))}
+            </div>
+          </FilterSection>
+
+          {/* Original version — a real switch */}
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-foreground/[0.04] px-3.5 py-3 hover:bg-foreground/[0.06] transition-colors">
+            <Languages className="size-4 shrink-0 text-foreground/60" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-medium text-foreground">{t.filters.originalVersionOnly}</span>
+              <span className="block text-xs text-foreground/50">{t.filters.ovHint}</span>
+            </span>
+            <input type="checkbox" role="switch" checked={ov} onChange={toggleOV} className="peer sr-only" />
+            <span
+              aria-hidden
+              className="relative h-[26px] w-[44px] shrink-0 rounded-full bg-foreground/15 transition-colors duration-200 peer-checked:bg-roman peer-focus-visible:ring-2 peer-focus-visible:ring-roman/50 after:absolute after:left-[3px] after:top-[3px] after:size-5 after:rounded-full after:bg-white after:shadow-[0_2px_4px_rgba(0,0,0,0.25)] after:transition-transform after:duration-200 after:ease-[cubic-bezier(0.32,0.72,0,1)] peer-checked:after:translate-x-[18px]"
+            />
+          </label>
+
+          {/* Order by — checkmark list */}
+          <FilterSection icon={<ArrowUpDown className="size-3.5" />} title={t.filters.orderBy}>
+            <fieldset className="overflow-hidden rounded-xl bg-foreground/[0.04] border-0 p-0 m-0 min-w-0">
+              <legend className="sr-only">{t.filters.orderBy}</legend>
+              {sortOptions.map(({ value, label }) => (
+                <label key={value} className="flex cursor-pointer items-center justify-between gap-3 px-3.5 py-2.5 text-sm hover:bg-foreground/[0.04] transition-colors [&+&]:shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)]">
+                  <input type="radio" name="global-sort" value={value} checked={sort === value} onChange={() => changeSort(value)} className="peer sr-only" />
+                  <span className={sort === value ? "font-medium text-foreground" : "text-foreground/70"}>{label}</span>
+                  <Check className={`size-4 text-roman transition-opacity ${sort === value ? "opacity-100" : "opacity-0"}`} />
+                </label>
+              ))}
+            </fieldset>
+          </FilterSection>
+        </div>
+
+        {/* Footer — filters apply live, so "Done" just closes */}
+        <div className="flex items-center gap-2 px-5 py-3 shrink-0 shadow-[0_-1px_0_hsl(var(--foreground)/0.06)]">
+          <button
+            onClick={clearAll}
+            disabled={!mounted || activeCount === 0}
+            className="h-10 rounded-full px-4 text-sm font-medium text-foreground/70 hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.97] disabled:opacity-30 disabled:pointer-events-none transition"
+          >
+            {t.filters.clearAll}
+          </button>
+          <button
+            onClick={() => setOpen(false)}
+            className="ml-auto h-10 rounded-full bg-foreground px-6 text-sm font-semibold text-background hover:bg-foreground/85 active:scale-[0.97] transition"
+          >
+            {t.filters.done}
+          </button>
         </div>
       </aside>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Building blocks
+// ---------------------------------------------------------------------------
+
+const TIME_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  morning: Sunrise,
+  afternoon: Sun,
+  late_afternoon: Sunset,
+  evening: Moon,
+  late_night: MoonStar,
+};
+
+/** Section with a sentence-case title, selected count, optional clear + collapse. */
+function FilterSection({
+  icon, title, count = 0, open = true, onToggle, onClear, clearLabel, children,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  count?: number;
+  open?: boolean;
+  onToggle?: () => void;
+  onClear?: () => void;
+  clearLabel?: string;
+  children: React.ReactNode;
+}) {
+  const heading = (
+    <>
+      <span className="text-foreground/50">{icon}</span>
+      <span>{title}</span>
+      {count > 0 && (
+        <span className="grid min-w-5 h-5 place-items-center rounded-full bg-roman/15 px-1.5 text-[11px] font-semibold tabular-nums text-roman-muted">
+          {count}
+        </span>
+      )}
+    </>
+  );
+  return (
+    <section>
+      <div className="mb-2.5 flex items-center gap-2">
+        {onToggle ? (
+          <button onClick={onToggle} aria-expanded={open} className="group flex flex-1 items-center gap-2 text-sm font-semibold text-foreground">
+            {heading}
+            <ChevronDown className={`ml-auto size-4 text-foreground/40 group-hover:text-foreground/70 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+          </button>
+        ) : (
+          <h3 className="flex flex-1 items-center gap-2 text-sm font-semibold text-foreground">{heading}</h3>
+        )}
+        {onClear && count > 0 && (
+          <button onClick={onClear} className="text-xs font-medium text-roman-muted hover:text-roman transition-colors">
+            {clearLabel}
+          </button>
+        )}
+      </div>
+      {open && children}
+    </section>
+  );
+}
+
+/** Toggle chip backed by a real (visually hidden) checkbox. */
+function Chip({ checked, onChange, className = "", children }: {
+  checked: boolean;
+  onChange: () => void;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label
+      className={[
+        "flex cursor-pointer select-none items-center justify-center gap-2 rounded-lg px-2 py-2 text-[13px] font-medium transition active:scale-[0.96]",
+        "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-roman/50",
+        checked
+          ? "bg-foreground text-background shadow-[0_2px_6px_-2px_rgba(0,0,0,0.3)]"
+          : "bg-foreground/[0.06] text-foreground/75 hover:bg-foreground/[0.1] hover:text-foreground",
+        className,
+      ].join(" ")}
+    >
+      <input type="checkbox" checked={checked} onChange={onChange} className="sr-only" />
+      {children}
+    </label>
+  );
+}
+
+/** List row with a round checkmark, backed by a real (visually hidden) checkbox. */
+function CheckRow({ checked, mixed = false, onChange, inputRef, tone = "roman", strong = false, inset = false, children }: {
+  checked: boolean;
+  mixed?: boolean;
+  onChange: () => void;
+  inputRef?: React.Ref<HTMLInputElement>;
+  tone?: "roman" | "green";
+  strong?: boolean;
+  inset?: boolean;
+  children: React.ReactNode;
+}) {
+  const on = checked || mixed;
+  const fill = tone === "green" ? "bg-green-600 ring-green-600" : "bg-roman ring-roman";
+  return (
+    <label
+      className={[
+        "flex cursor-pointer items-center gap-3 py-2.5 pr-3.5 text-sm transition-colors hover:bg-foreground/[0.04]",
+        "[&+&]:shadow-[inset_0_1px_0_hsl(var(--foreground)/0.06)] has-[:focus-visible]:bg-foreground/[0.06]",
+        inset ? "pl-9" : "pl-3.5",
+      ].join(" ")}
+    >
+      <input ref={inputRef} type="checkbox" checked={checked} onChange={onChange} className="sr-only" />
+      <span
+        aria-hidden
+        className={`grid size-[18px] shrink-0 place-items-center rounded-full ring-[1.5px] ring-inset transition-colors ${
+          on ? `${fill} text-white` : "ring-foreground/25"
+        }`}
+      >
+        {mixed ? <Minus className="size-3" strokeWidth={3} /> : checked ? <Check className="size-3" strokeWidth={3} /> : null}
+      </span>
+      <span className={`flex min-w-0 items-center gap-2 ${strong ? "font-semibold" : ""} ${on ? "text-foreground" : "text-foreground/75"}`}>
+        {children}
+      </span>
+    </label>
   );
 }

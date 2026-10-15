@@ -60,6 +60,16 @@ const en = {
     genre: "Genre",
     filmsInCity: (n: number) => (n === 1 ? "1 film in your city" : `${n} films in your city`),
     ofFilms: (shown: number, total: number) => `${shown} of ${total} films`,
+    done: "Done",
+    when: "When",
+    ovHint: "Foreign films in their original language",
+    timeNames: {
+      morning: "Morning",
+      afternoon: "Afternoon",
+      late_afternoon: "Late afternoon",
+      evening: "Evening",
+      late_night: "Night",
+    } as Record<string, string>,
   },
   schedule: {
     today: "TODAY",
@@ -152,6 +162,16 @@ const it: typeof en = {
     genre: "Genere",
     filmsInCity: (n: number) => `${n} film nella tua città`,
     ofFilms: (shown: number, total: number) => `${shown} di ${total} film`,
+    done: "Fatto",
+    when: "Quando",
+    ovHint: "Film stranieri in lingua originale",
+    timeNames: {
+      morning: "Mattina",
+      afternoon: "Pomeriggio",
+      late_afternoon: "Tardo pomeriggio",
+      evening: "Sera",
+      late_night: "Notte",
+    },
   },
   schedule: {
     today: "OGGI",
