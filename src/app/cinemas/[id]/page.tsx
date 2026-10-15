@@ -12,6 +12,7 @@ import type { ApiScreening } from "@/lib/api/types";
 import { MapPin } from "lucide-react";
 import { getCinemaConfig } from "@/lib/cinemas-config";
 import { mapsUrl } from "@/lib/utils";
+import { romeWallClockKey } from "@/lib/og/showtimes";
 import { CinemaPageNav, CinemaWebsiteButton } from "./cinema-page-nav";
 import {
   CinemaScheduleGrid,
@@ -119,17 +120,19 @@ export default async function CinemaPage({ params }: PageProps) {
   if (!config) notFound();
   const cinema = config;
 
-  const now = new Date().toISOString();
+  // Screening datetimes are Rome wall clocks ("2026-10-12T15:20:00"), so
+  // "now" and "today" are read off Rome's clock too — not the server's (UTC in
+  // Docker), which would run 1–2 hours behind and flip the day late.
+  const romeNow = romeWallClockKey(new Date());
 
   const upcoming = screenings
-    .filter((s) => s.datetime >= now)
+    .filter((s) => s.datetime >= romeNow)
     .sort((a, b) => a.datetime.localeCompare(b.datetime));
 
   // Build every consecutive day from today to the last scraped date.
   // Minimum window is one page so the first page always has columns even if
   // the cinema has no screenings yet.
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
+  const todayStart = new Date(romeNow.slice(0, 10) + "T00:00:00");
 
   const lastScraped = upcoming.reduce<string | null>(
     (max, s) => (max === null || s.datetime > max ? s.datetime.slice(0, 10) : max),

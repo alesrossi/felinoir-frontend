@@ -6,6 +6,7 @@ import { SlidersHorizontal, X, Calendar, ArrowUpDown, MapPin, Languages, Chevron
 import { ALL_GENRES, getGenreLabel } from "@/lib/genres";
 import { TIME_RANGES } from "@/lib/time-ranges";
 import { useLang } from "@/lib/lang";
+import { romeDateString } from "@/lib/structured-data/rome-time";
 
 // ---------------------------------------------------------------------------
 // Shared constants — imported by other components that react to filter changes
@@ -105,8 +106,10 @@ export function loadStoredFavourites(): Set<string> {
 // ---------------------------------------------------------------------------
 
 function getNext7Days(todayLabel: string, tomorrowLabel: string, locale: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // "Today" is Rome's today — the listings are Rome wall clocks, and the server
+  // (UTC in Docker) and the browser must agree or hydration fails after midnight.
+  const [y, m, d0] = romeDateString(new Date()).split("-").map(Number);
+  const today = new Date(y, m - 1, d0);
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today);
     d.setDate(d.getDate() + i);

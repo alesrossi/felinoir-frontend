@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import { getMovies } from "@/lib/api/movies";
 import { getScreenings } from "@/lib/api/screenings";
 import { MovieGrid } from "@/components/movie-grid";
@@ -8,6 +7,7 @@ import { HomeCarousels } from "@/components/home-carousels";
 import FooterSection from "@/components/ui/footer";
 import { TIME_RANGES, inTimeRange, minutesFromDatetime } from "@/lib/time-ranges";
 import { getCinemasConfig } from "@/lib/cinemas-config";
+import { romeWallClockKey } from "@/lib/og/showtimes";
 import { BASE_URL, JsonLd, buildItemList, graph, localizedTitle, moviePath } from "@/lib/structured-data";
 import type { CarouselSection } from "@/components/home-carousels";
 import type { Metadata } from "next";
@@ -48,7 +48,10 @@ export default async function Home({ searchParams }: PageProps) {
     getScreenings({ limit: 50_000 }),
   ]);
 
-  const now = new Date().toISOString();
+  // Screening datetimes are Rome wall clocks ("2026-10-12T15:20:00"): compare
+  // them against Rome's clock, not the server's (UTC in Docker). Real UTC
+  // timestamps (createdAt, tmdbEnrichedAt) are still compared in UTC below.
+  const romeNow = romeWallClockKey(new Date());
   const countMap = new Map<number, number>();
   const anyOVMovieIds    = new Set<number>();
   const anyNonOVMovieIds = new Set<number>();
@@ -62,9 +65,9 @@ export default async function Home({ searchParams }: PageProps) {
   }
 
   // ── Non-open-air screening stats per movie (used by carousels) ───────────
-  const todayStr  = now.slice(0, 10);
-  const in2Days    = new Date(Date.now() + 2  * 86_400_000).toISOString();
-  const in3Days    = new Date(Date.now() + 3  * 86_400_000).toISOString();
+  const todayStr  = romeNow.slice(0, 10);
+  const in2Days    = romeWallClockKey(new Date(Date.now() + 2 * 86_400_000));
+  const in3Days    = romeWallClockKey(new Date(Date.now() + 3 * 86_400_000));
   const minus5Days  = new Date(Date.now() - 5  * 86_400_000).toISOString();
   const minus14Days = new Date(Date.now() - 14 * 86_400_000).toISOString();
 
@@ -84,7 +87,7 @@ export default async function Home({ searchParams }: PageProps) {
       entry = { hasPast: false, earliest: s.datetime, latest: s.datetime, count: 0, hasTonight: false };
       noaMap.set(s.movieId, entry);
     }
-    if (s.datetime < now) { entry.hasPast = true; continue; }
+    if (s.datetime < romeNow) { entry.hasPast = true; continue; }
     entry.count++;
     if (s.datetime < entry.earliest) entry.earliest = s.datetime;
     if (s.datetime > entry.latest)   entry.latest   = s.datetime;
@@ -93,7 +96,7 @@ export default async function Home({ searchParams }: PageProps) {
   // ─────────────────────────────────────────────────────────────────────────
 
   for (const s of screenings) {
-    if (s.datetime < now) continue;
+    if (s.datetime < romeNow) continue;
     if (s.isOV) anyOVMovieIds.add(s.movieId);
     else anyNonOVMovieIds.add(s.movieId);
 
@@ -224,11 +227,10 @@ export default async function Home({ searchParams }: PageProps) {
         <HomeCarousels sections={carouselSections} />
 
         <MovieGrid
-          toolbar={
-            <Suspense>
-              <FiltersBar totalShown={sorted.length} totalAll={homepageTotal} />
-            </Suspense>
-          }
+          // No <Suspense> around FiltersBar: this page is force-dynamic, so
+          // useSearchParams doesn't need one, and a boundary would hydrate it
+          // late — after LangProvider has switched locale — causing a text mismatch.
+          toolbar={<FiltersBar totalShown={sorted.length} totalAll={homepageTotal} />}
           sort={sortKey}
           movies={sorted}
           totalMovies={homepageTotal}

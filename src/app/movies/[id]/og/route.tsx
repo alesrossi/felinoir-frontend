@@ -20,7 +20,7 @@ import sharp from "sharp";
 import { getMovieByParam } from "@/lib/api/movies";
 import { getScreenings } from "@/lib/api/screenings";
 import { getCinemasConfig } from "@/lib/cinemas-config";
-import { pickOgShowtimes } from "@/lib/og/showtimes";
+import { pickOgShowtimes, romeWallClockKey } from "@/lib/og/showtimes";
 import { OG_IMAGE_SIZE } from "@/lib/og/constants";
 import type { OgShowtimes } from "@/lib/og/showtimes";
 
@@ -161,7 +161,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   // not the image.
   const screenings = await getScreenings({
     movieId: movie.id,
-    from: new Date().toISOString(),
+    from: romeWallClockKey(new Date()), // backend compares Rome wall clocks digit-for-digit
     limit: 500,
   }).catch(() => []);
 

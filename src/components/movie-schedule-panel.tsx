@@ -8,6 +8,7 @@ import type { MovieCinemaMarker, ModalState } from "@/components/map/movie-map";
 import { loadStoredCinemas, loadStoredOV, loadStoredTimes, loadStoredDates, loadStoredFavourites, FAVOURITES_KEY, GLOBAL_FILTER_EVENT } from "@/components/global-filter-fab";
 import { TIME_RANGES, inTimeRange, minutesFromDatetime } from "@/lib/time-ranges";
 import { useLang } from "@/lib/lang";
+import { romeDateString } from "@/lib/structured-data/rome-time";
 
 // ---------------------------------------------------------------------------
 // Date helpers
@@ -20,15 +21,18 @@ function toDateStr(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function startOfDay(d: Date): Date {
-  const copy = new Date(d);
-  copy.setHours(0, 0, 0, 0);
-  return copy;
-}
-
 function parseDateStr(s: string): Date {
   const [y, mo, d] = s.split("-").map(Number);
   return new Date(y, mo - 1, d);
+}
+
+/**
+ * Today's date in Rome, as a local-midnight Date. Listings are Rome wall
+ * clocks, and server (UTC in Docker) and browser must agree on "today" or the
+ * date bar fails hydration in the hours after midnight.
+ */
+function romeToday(): Date {
+  return parseDateStr(romeDateString(new Date()));
 }
 
 // ---------------------------------------------------------------------------
@@ -192,7 +196,7 @@ function DateNavigator({
   const month   = date.toLocaleDateString(localeStr, { month: "long" });
   const day     = date.getDate();
   const year    = date.getFullYear();
-  const showYear = year !== new Date().getFullYear();
+  const showYear = year !== romeToday().getFullYear();
   const inputRef = useRef<HTMLInputElement>(null);
 
   function openPicker() {
@@ -290,7 +294,7 @@ function availableDatesFor(
   dateFilter: Set<string>,
   movieLanguage?: string,
 ): string[] {
-  const todayStr = toDateStr(startOfDay(new Date()));
+  const todayStr = toDateStr(romeToday());
   const activeTimeRanges = TIME_RANGES.filter(r => times.has(r.id));
   const dates = new Set<string>();
   for (const m of markers) {
@@ -313,7 +317,7 @@ function availableDatesFor(
 
 export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = "map", onFilteredCountChange, toolbar }: MovieSchedulePanelProps) {
   const { t } = useLang();
-  const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
+  const [selectedDate, setSelectedDate] = useState<Date>(() => romeToday());
   const [selectedCinemas, setSelectedCinemas] = useState<Set<string>>(new Set());
   const [filterOV, setFilterOV] = useState(false);
   const [selectedTimes, setSelectedTimes] = useState<Set<string>>(new Set());
@@ -333,7 +337,7 @@ export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = 
     // Land on the first date that actually has showings under the loaded
     // filters — never on an empty date.
     const first = availableDatesFor(markers, cinemas, ov, times, dates, movieLanguage)[0];
-    if (first && first !== toDateStr(startOfDay(new Date()))) {
+    if (first && first !== toDateStr(romeToday())) {
       setSelectedDate(parseDateStr(first));
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -354,7 +358,7 @@ export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = 
     };
   }, []);
 
-  const today = startOfDay(new Date());
+  const today = romeToday();
   const isToday = selectedDate.getTime() === today.getTime();
   const dateStr = toDateStr(selectedDate);
 

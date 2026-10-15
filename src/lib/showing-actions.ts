@@ -37,10 +37,18 @@ export function showingShareText(
 
 /** Download a one-event .ics file for the screening. */
 export function downloadShowingIcs(s: ShareableShowing, { movieTitle, cinemaName }: ShowingContext): void {
-  const start = new Date(s.datetime);
-  const end = new Date(start.getTime() + 2 * 60 * 60 * 1000); // assume 2h runtime
-  const fmt = (d: Date) =>
-    d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  // `datetime` is a Rome wall clock ("2026-10-17T21:00:00"). Write it as-is
+  // with TZID=Europe/Rome so the event lands at the right moment whatever
+  // timezone the device is in — parsing it with `new Date()` would read it as
+  // the device's local time.
+  const [y, mo, d, h, mi] = s.datetime.match(/\d+/g)!.map(Number);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const wall = (t: Date) =>
+    `${t.getUTCFullYear()}${pad(t.getUTCMonth() + 1)}${pad(t.getUTCDate())}T${pad(t.getUTCHours())}${pad(t.getUTCMinutes())}00`;
+  // Date.UTC is only used as calendar arithmetic on the wall clock here.
+  const start = new Date(Date.UTC(y, mo - 1, d, h, mi));
+  const end = new Date(Date.UTC(y, mo - 1, d, h + 2, mi)); // assume 2h runtime
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""); // UTC, ends in Z
   const badges = [s.isOV ? "OV" : "", s.is3D ? "3D" : ""].filter(Boolean).join(" ");
   const title = [movieTitle, badges].filter(Boolean).join(" ");
   const ics = [
@@ -49,9 +57,9 @@ export function downloadShowingIcs(s: ShareableShowing, { movieTitle, cinemaName
     "PRODID:-//felinoir//cinema//EN",
     "BEGIN:VEVENT",
     `UID:${s.id}-${s.datetime}@felinoir.it`,
-    `DTSTAMP:${fmt(new Date())}Z`,
-    `DTSTART:${fmt(start)}`,
-    `DTEND:${fmt(end)}`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART;TZID=Europe/Rome:${wall(start)}`,
+    `DTEND;TZID=Europe/Rome:${wall(end)}`,
     `SUMMARY:${title}`,
     `LOCATION:${cinemaName}`,
     s.bookingUrl ? `URL:${s.bookingUrl}` : "",

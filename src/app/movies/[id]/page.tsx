@@ -79,7 +79,10 @@ function shareDescription(movie: { tmdbTagline?: string; tmdbPlot?: string; syno
 
 export default async function MoviePage({ params }: PageProps) {
   const { id: param } = await params;
-  const now = new Date().toISOString();
+  // The backend compares `from` digit-for-digit against the stored Rome wall
+  // clocks, ignoring any timezone suffix — so send Rome's clock, not UTC (which
+  // would keep already-started screenings listed for 1–2 hours).
+  const romeNow = romeWallClockKey(new Date());
 
   const movie = await getMovieByParam(param);
 
@@ -88,7 +91,7 @@ export default async function MoviePage({ params }: PageProps) {
   const screenings = await getScreenings({
     movieId: movie.id,
     withRelations: true,
-    from: now,
+    from: romeNow,
     limit: 2000,
   });
 
