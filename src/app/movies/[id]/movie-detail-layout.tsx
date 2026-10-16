@@ -50,20 +50,16 @@ export function MovieDetailLayout({
     { id: "list" as const, label: "List view", Icon: List },
   ];
 
-  // Segmented control: the selected segment is a raised chip on a recessed track.
+  // Map / list toggle: selected option solid red, the other outlined.
   const viewToggle = markersCount > 0 ? (
-    <div className="flex items-center rounded-lg bg-foreground/[0.06] p-0.5">
+    <div className="flex items-center gap-1">
       {viewOptions.map(({ id, label, Icon }) => (
         <button
           key={id}
           onClick={() => selectView(id)}
           aria-label={label}
           aria-pressed={view === id}
-          className={`rounded-md p-1.5 transition active:scale-[0.94] ${
-            view === id
-              ? "bg-background text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.12)]"
-              : "text-foreground/50 hover:text-foreground"
-          }`}
+          className={`rounded-md p-1.5 active:scale-[0.94] ${view === id ? "btn-roman-on" : "btn-roman"}`}
         >
           <Icon className="size-3.5" />
         </button>

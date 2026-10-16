@@ -165,7 +165,7 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
       >
         <button
           onClick={() => router.push(buildBackHref(backHref))}
-          className="-ml-2 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-foreground/70 hover:text-foreground hover:bg-foreground/[0.06] active:scale-[0.97] transition"
+          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-roman-muted active:scale-[0.97] transition"
         >
           <ArrowLeft className="size-4" />
           {t.movie.back}
@@ -226,9 +226,7 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
                         onClick={() => { toggleStoredGenre(toEnGenre(g) ?? ""); router.push(buildBackHref("/")); }}
                         className={[
                           "rounded-full px-2.5 py-0.5 text-xs transition active:scale-[0.97]",
-                          isActive
-                            ? "bg-roman/15 text-roman-muted ring-1 ring-inset ring-roman/40"
-                            : "bg-foreground/[0.06] text-foreground/75 hover:bg-foreground/[0.1] hover:text-foreground",
+                          isActive ? "btn-roman-on" : "btn-roman",
                         ].join(" ")}
                       >
                         {g}
@@ -246,7 +244,8 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
               {trailerId && (
                 <button
                   onClick={() => setTrailerOpen(true)}
-                  className="inline-flex h-9 items-center gap-2 rounded-full bg-foreground pl-3.5 pr-4 text-sm font-medium text-background hover:bg-foreground/85 active:scale-[0.97] transition"
+                  // Light: red outline. Dark: the original solid light button.
+                  className="btn-roman dark:border-transparent dark:bg-foreground dark:text-background dark:hover:bg-foreground/85 inline-flex h-9 items-center gap-2 rounded-full pl-3.5 pr-4 text-sm font-medium active:scale-[0.97]"
                 >
                   <Play className="size-3.5 fill-current" />
                   {t.movie.watchTrailer}
@@ -295,7 +294,7 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
               {plotLong && (
                 <button
                   onClick={() => setPlotOpen((o) => !o)}
-                  className="mt-1.5 text-sm font-medium text-foreground hover:text-roman-muted transition-colors"
+                  className="mt-1.5 text-sm font-medium text-roman-muted hover:text-roman transition-colors"
                 >
                   {plotOpen ? t.movie.less : t.movie.more}
                 </button>

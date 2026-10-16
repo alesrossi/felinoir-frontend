@@ -138,18 +138,14 @@ export function MovieGrid({ movies, screeningCounts, filterParams, totalMovies, 
       >
         {toolbar}
         {movies.length > 0 && (
-          <div className="flex shrink-0 items-center rounded-lg bg-foreground/[0.06] p-0.5 max-sm:order-2">
+          <div className="flex shrink-0 items-center gap-1 max-sm:order-2">
             {viewOptions.map(({ id, label, Icon }) => (
               <button
                 key={id}
                 onClick={() => changeView(id)}
                 aria-label={label}
                 aria-pressed={view === id}
-                className={`rounded-md p-1.5 transition active:scale-[0.94] ${
-                  view === id
-                    ? "bg-background text-foreground shadow-[0_1px_2px_rgba(0,0,0,0.12)]"
-                    : "text-foreground/50 hover:text-foreground"
-                }`}
+                className={`rounded-md p-1.5 active:scale-[0.94] ${view === id ? "btn-roman-on" : "btn-roman"}`}
               >
                 <Icon className="size-4" />
               </button>

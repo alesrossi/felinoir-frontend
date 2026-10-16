@@ -12,7 +12,7 @@ export function CinemaPageNav() {
     <div className="flex h-14 items-center justify-between">
       <Link
         href="/"
-        className="-ml-2 inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-sm text-foreground/70 hover:text-foreground hover:bg-foreground/[0.06] active:scale-[0.97] transition"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-roman-muted active:scale-[0.97] transition"
       >
         <ArrowLeft className="size-4" />
         {t.movie.back}
@@ -32,7 +32,7 @@ export function CinemaWebsiteButton({ websiteUrl }: { websiteUrl: string }) {
       href={websiteUrl}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex h-9 items-center gap-1.5 rounded-full bg-foreground/[0.06] pl-4 pr-3 text-sm font-medium text-foreground hover:bg-foreground/[0.1] active:scale-[0.97] transition"
+      className="btn-roman inline-flex h-9 items-center gap-1.5 rounded-full pl-4 pr-3 text-sm font-medium active:scale-[0.97]"
     >
       {t.cinema.website}
       <ArrowUpRight className="size-3.5" />

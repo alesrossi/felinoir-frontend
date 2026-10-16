@@ -158,9 +158,7 @@ export function MovieCard({ movie, screeningCount, filterParams, view = "grid", 
                       onClick={(e) => handleGenreClick(e, g)}
                       className={[
                         "rounded-full px-2 py-0.5 text-[11px] transition active:scale-[0.96]",
-                        isActive
-                          ? "bg-roman/15 text-roman-muted ring-1 ring-inset ring-roman/40"
-                          : "bg-foreground/[0.06] text-foreground/70 hover:bg-foreground/[0.1] hover:text-foreground",
+                        isActive ? "btn-roman-on" : "btn-roman",
                       ].join(" ")}
                     >
                       {g}

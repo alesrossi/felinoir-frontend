@@ -115,6 +115,20 @@ body::after {
   display: none;
 }
 
+/* ── Site button language ────────────────────────────────────────────────
+   Red outline at rest, solid red while pressed. Selected toggles (chips,
+   tabs, segmented options) stay solid red. */
+@layer components {
+  .btn-roman {
+    @apply border border-roman/40 bg-transparent text-roman-muted transition-colors
+      hover:border-roman-muted hover:bg-roman/10
+      active:border-roman active:bg-roman active:text-white;
+  }
+  .btn-roman-on {
+    @apply border border-roman bg-roman text-white transition-colors;
+  }
+}
+
 /* ── Serif display utility ───────────────────────────────────────────────── */
 .font-display {
   font-family: var(--font-cormorant), Georgia, "Times New Roman", serif;

@@ -133,7 +133,8 @@ export function HomeCarousels({ sections }: HomeCarouselsProps) {
   if (!active) return null;
 
   const arrowClass =
-    "absolute top-1/2 z-10 -translate-y-1/2 grid size-10 place-items-center rounded-full bg-background/80 text-foreground shadow-lg ring-1 ring-foreground/10 backdrop-blur-xl opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 hover:bg-background active:scale-[0.92] transition";
+    // Floats over imagery, so the outline sits on a solid backing for contrast.
+    "btn-roman absolute top-1/2 z-10 -translate-y-1/2 grid size-10 place-items-center rounded-full !bg-background shadow-lg opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 hover:!bg-background active:!bg-roman active:scale-[0.92] transition";
 
   return (
     <section className="mb-12" aria-label={t.carousels.highlights}>
@@ -144,7 +145,7 @@ export function HomeCarousels({ sections }: HomeCarouselsProps) {
             screens the whole track scrolls edge to edge (instead of being clipped
             inside its own pill), and the right edge fades to show there's more. */}
         <div className="w-full sm:w-auto overflow-x-auto scrollbar-hide max-sm:-mx-4 max-sm:px-4 max-sm:[mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]">
-        <div role="tablist" className="inline-flex w-max gap-0.5 rounded-full bg-foreground/[0.05] p-1 max-sm:mr-6">
+        <div role="tablist" className="inline-flex w-max gap-0.5 rounded-full bg-roman/10 p-1 max-sm:mr-6">
           {visible.map((s) => {
             const selected = s.id === active.id;
             return (
@@ -155,8 +156,8 @@ export function HomeCarousels({ sections }: HomeCarouselsProps) {
                 onClick={() => selectTab(s.id)}
                 className={`h-8 shrink-0 rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition active:scale-[0.96] ${
                   selected
-                    ? "bg-background text-foreground shadow-[0_1px_3px_rgba(0,0,0,0.15)]"
-                    : "text-foreground/60 hover:text-foreground"
+                    ? "bg-roman text-white shadow-[0_1px_3px_rgba(0,0,0,0.15)]"
+                    : "text-roman-muted/75 hover:text-roman-muted dark:text-white/85 dark:hover:text-white"
                 }`}
               >
                 {t.carousels[s.id]}

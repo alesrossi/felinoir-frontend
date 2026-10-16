@@ -490,7 +490,7 @@ export function GlobalFilterFab({
           <button
             onClick={() => setOpen(false)}
             aria-label="Close"
-            className="grid size-8 place-items-center rounded-full bg-foreground/[0.06] text-foreground/60 hover:bg-foreground/[0.1] hover:text-foreground active:scale-[0.92] transition"
+            className={`btn-roman ${DARK_NEUTRAL} grid size-8 place-items-center rounded-full active:scale-[0.92]`}
           >
             <X className="size-4" />
           </button>
@@ -619,7 +619,7 @@ export function GlobalFilterFab({
                   <button
                     onClick={() => setCinemaSearch("")}
                     aria-label={t.filters.clear}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 grid size-6 place-items-center rounded-full text-foreground/50 hover:bg-foreground/[0.08] hover:text-foreground transition"
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 grid size-6 place-items-center rounded-full text-roman-muted hover:bg-roman/10 active:bg-roman active:text-white dark:text-foreground/50 dark:hover:bg-foreground/[0.08] dark:hover:text-foreground dark:active:bg-foreground/[0.12] dark:active:text-foreground transition"
                   >
                     <X className="size-3.5" />
                   </button>
@@ -689,13 +689,13 @@ export function GlobalFilterFab({
           <button
             onClick={clearAll}
             disabled={!mounted || activeCount === 0}
-            className="h-10 rounded-full px-4 text-sm font-medium text-foreground/70 hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.97] disabled:opacity-30 disabled:pointer-events-none transition"
+            className="h-10 rounded-full px-4 text-sm font-medium text-roman-muted hover:bg-roman/10 active:bg-roman active:text-white dark:text-foreground/70 dark:hover:bg-foreground/[0.06] dark:hover:text-foreground dark:active:bg-foreground/[0.1] dark:active:text-foreground active:scale-[0.97] disabled:opacity-30 disabled:pointer-events-none transition"
           >
             {t.filters.clearAll}
           </button>
           <button
             onClick={() => setOpen(false)}
-            className="ml-auto h-10 rounded-full bg-foreground px-6 text-sm font-semibold text-background hover:bg-foreground/85 active:scale-[0.97] transition"
+            className="btn-roman dark:border-roman dark:bg-roman dark:text-white dark:hover:bg-roman/85 ml-auto h-10 rounded-full px-6 text-sm font-semibold active:scale-[0.97]"
           >
             {t.filters.done}
           </button>
@@ -708,6 +708,11 @@ export function GlobalFilterFab({
 // ---------------------------------------------------------------------------
 // Building blocks
 // ---------------------------------------------------------------------------
+
+// Dark mode keeps the drawer's quieter neutral controls (light mode uses the red
+// outline). Selected chips and the primary button are roman red in both.
+const DARK_NEUTRAL =
+  "dark:border-transparent dark:bg-foreground/[0.06] dark:text-foreground/75 dark:hover:border-transparent dark:hover:bg-foreground/[0.1] dark:hover:text-foreground";
 
 const TIME_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   morning: Sunrise,
@@ -775,9 +780,7 @@ function Chip({ checked, onChange, className = "", children }: {
       className={[
         "flex cursor-pointer select-none items-center justify-center gap-2 rounded-lg px-2 py-2 text-[13px] font-medium transition active:scale-[0.96]",
         "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-roman/50",
-        checked
-          ? "bg-foreground text-background shadow-[0_2px_6px_-2px_rgba(0,0,0,0.3)]"
-          : "bg-foreground/[0.06] text-foreground/75 hover:bg-foreground/[0.1] hover:text-foreground",
+        checked ? "btn-roman-on" : `btn-roman ${DARK_NEUTRAL}`,
         className,
       ].join(" ")}
     >

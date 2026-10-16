@@ -215,7 +215,7 @@ function DateNavigator({
   }
 
   const arrowClass =
-    "grid size-8 place-items-center rounded-full text-foreground/70 hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.92] disabled:opacity-20 disabled:pointer-events-none transition";
+    "btn-roman grid size-8 place-items-center rounded-full active:scale-[0.92] disabled:opacity-25 disabled:pointer-events-none";
 
   return (
     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4 h-14 px-5 lg:px-6 border-b border-border shrink-0 select-none">
@@ -235,10 +235,10 @@ function DateNavigator({
         {/* Date display — clickable to open native date picker */}
         <button
           onClick={openPicker}
-          className="relative flex items-center gap-2 rounded-full px-3 h-8 min-w-[180px] justify-center hover:bg-foreground/[0.06] active:scale-[0.98] transition"
+          className="group relative flex items-center gap-2 rounded-full px-3 h-8 min-w-[180px] justify-center hover:bg-roman/10 active:scale-[0.98] transition"
           aria-label="Select date"
         >
-          <span className="text-sm font-semibold capitalize text-foreground">
+          <span className="text-sm font-semibold capitalize text-foreground group-hover:text-roman-muted transition-colors">
             {weekday} {day} {month}{showYear && ` ${year}`}
           </span>
           {isToday && (

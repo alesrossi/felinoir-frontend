@@ -91,7 +91,7 @@ interface ModalPayload {
 }
 
 const iconButton =
-  "grid size-8 place-items-center rounded-full text-foreground/50 hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.92] transition";
+  "btn-roman grid size-8 place-items-center rounded-full active:scale-[0.92]";
 
 function Modal({ payload, onClose }: { payload: ModalPayload; onClose: () => void }) {
   const [copiedId, setCopiedId] = useState<number | null>(null);
@@ -129,7 +129,7 @@ function Modal({ payload, onClose }: { payload: ModalPayload; onClose: () => voi
           </div>
           <button
             onClick={onClose}
-            className="-mr-1 -mt-1 ml-auto grid size-8 shrink-0 place-items-center rounded-full text-foreground/60 hover:bg-foreground/[0.06] hover:text-foreground active:scale-[0.92] transition"
+            className="btn-roman -mr-1 -mt-1 ml-auto grid size-8 shrink-0 place-items-center rounded-full active:scale-[0.92]"
             aria-label="Close"
           >
             <X className="size-4" />
@@ -175,7 +175,7 @@ function Modal({ payload, onClose }: { payload: ModalPayload; onClose: () => voi
                       href={href}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex h-8 items-center gap-1 rounded-full bg-foreground pl-3 pr-2.5 text-xs font-semibold text-background hover:bg-foreground/85 active:scale-[0.96] transition"
+                      className="btn-roman inline-flex h-8 items-center gap-1 rounded-full pl-3 pr-2.5 text-xs font-semibold active:scale-[0.96]"
                     >
                       {t.cinema.book}
                       <ArrowUpRight className="size-3.5" />
@@ -258,7 +258,7 @@ export function CinemaScheduleGrid({ dates, rows, cinemaName, cinemaWebsite }: P
 
   const gridCols = { gridTemplateColumns: `minmax(200px, 1.25fr) repeat(${visibleDates.length}, minmax(0, 1fr))` };
   const stepClass =
-    "grid size-8 place-items-center rounded-full text-foreground/70 hover:bg-background hover:text-foreground active:scale-[0.92] disabled:opacity-25 disabled:pointer-events-none transition";
+    "btn-roman grid size-8 place-items-center rounded-full active:scale-[0.92] disabled:opacity-25 disabled:pointer-events-none";
 
   return (
     <>
@@ -271,7 +271,7 @@ export function CinemaScheduleGrid({ dates, rows, cinemaName, cinemaWebsite }: P
           </p>
         </div>
 
-        <div className="flex items-center gap-1 rounded-full bg-foreground/[0.05] p-1">
+        <div className="flex items-center gap-2">
           <button onClick={() => goTo(Math.max(0, offset - PAGE_SIZE))} disabled={offset === 0} className={stepClass} aria-label={t.schedule.previous}>
             <ChevronLeft className="size-4" />
           </button>
@@ -352,11 +352,11 @@ export function CinemaScheduleGrid({ dates, rows, cinemaName, cinemaWebsite }: P
                               onClick={() =>
                                 setModal({ title, cinemaName, cinemaWebsite, posterUrl: row.posterUrl, date: dateLabel, slots, selectedId: slot.id })
                               }
-                              className="inline-flex items-baseline gap-1 rounded-md bg-foreground/[0.06] px-2 py-1 text-[13px] font-semibold tabular-nums text-foreground/85 hover:bg-roman/15 hover:text-roman-muted active:scale-[0.95] transition"
+                              className="btn-roman inline-flex items-baseline gap-1 rounded-md px-2 py-1 text-[13px] font-semibold tabular-nums active:scale-[0.95]"
                             >
                               {slot.time}
-                              {slot.isOV && <span className="text-[9px] font-bold tracking-wide text-roman-muted">OV</span>}
-                              {slot.is3D && <span className="text-[9px] font-bold tracking-wide text-foreground/50">3D</span>}
+                              {slot.isOV && <span className="text-[9px] font-bold tracking-wide opacity-75">OV</span>}
+                              {slot.is3D && <span className="text-[9px] font-bold tracking-wide opacity-75">3D</span>}
                             </button>
                           ))}
                         </div>
