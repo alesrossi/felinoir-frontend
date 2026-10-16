@@ -2,10 +2,9 @@
 
 import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { X, Share2, Check, CalendarPlus } from "lucide-react";
 import { Map, MapMarker, MarkerContent, MapControls, useMap } from "@/components/ui/map";
 import { useLang } from "@/lib/lang";
-import { downloadShowingIcs, showingShareText } from "@/lib/showing-actions";
+import { ShowingModal } from "@/components/showing-modal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,52 +31,7 @@ export interface MovieCinemaMarker {
 }
 
 // ---------------------------------------------------------------------------
-// Time chip — used inside the booking modal
-// ---------------------------------------------------------------------------
-
-function TimeChip({ showing, cinemaWebsite }: { showing: MovieShowing; cinemaWebsite?: string }) {
-  const badges = (showing.is3D || showing.isOV) && (
-    <span className="flex gap-1 mt-1.5">
-      {showing.is3D && (
-        <span className="text-[9px] font-bold px-1 py-px rounded border border-border text-muted-foreground">
-          3D
-        </span>
-      )}
-      {showing.isOV && (
-        <span className="text-[9px] font-bold px-1 py-px rounded border border-roman/40 text-roman-muted">
-          OV
-        </span>
-      )}
-    </span>
-  );
-
-  const base = "inline-flex flex-col items-center rounded-sm px-3 py-2 transition-colors";
-
-  const href = showing.bookingUrl ?? cinemaWebsite;
-
-  if (href) {
-    return (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={`${base} bg-roman/10 text-roman-muted border border-roman/30 hover:bg-roman/20`}
-      >
-        <span className="tabular-nums font-bold text-sm leading-none">{showing.time}</span>
-        {badges}
-      </a>
-    );
-  }
-  return (
-    <div className={`${base} bg-card border border-border text-foreground`}>
-      <span className="tabular-nums font-bold text-sm leading-none">{showing.time}</span>
-      {badges}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Booking modal
+// Booking modal — the shared ShowingModal, headed by the cinema
 // ---------------------------------------------------------------------------
 
 export interface ModalState {
@@ -86,81 +40,31 @@ export interface ModalState {
   cinemaWebsite?: string;
   date: string; // "YYYY-MM-DD"
   showings: MovieShowing[];
+  posterUrl?: string;
+  posterFallbackUrl?: string;
+  /** The time the user clicked, highlighted in the modal. */
+  selectedId?: number;
 }
 
 export function BookingModal({ state, onClose }: { state: ModalState; onClose: () => void }) {
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-  const { locale, t } = useLang();
-  const formattedDate = new Date(state.date + "T00:00:00").toLocaleDateString(
+  const { locale } = useLang();
+  const dateLabel = new Date(state.date + "T00:00:00").toLocaleDateString(
     locale === "en" ? "en-GB" : "it-IT",
     { weekday: "long", day: "numeric", month: "long" }
   );
-
-  const context = { movieTitle: state.movieTitle, cinemaName: state.cinemaName };
-
-  function addToCalendar(s: MovieShowing) {
-    downloadShowingIcs(s, context);
-  }
-
-  function copyShowing(s: MovieShowing) {
-    navigator.clipboard.writeText(showingShareText(s, { ...context, dateLabel: formattedDate, locale })).catch(() => {});
-    setCopiedId(s.id);
-    setTimeout(() => setCopiedId(null), 2000);
-  }
-
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
-    >
-      <div className="absolute inset-0 bg-black/70" />
-      <div
-        className="relative z-10 w-full max-w-sm rounded border border-border bg-card shadow-2xl p-6 flex flex-col max-h-[75vh] overflow-hidden"
-        onClick={e => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-5 shrink-0">
-          <div className="min-w-0">
-            <p className="font-semibold text-foreground leading-snug truncate">{state.cinemaName}</p>
-            <p className="text-sm text-roman-muted mt-1">{formattedDate}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="text-muted-foreground hover:text-foreground transition-colors shrink-0 mt-0.5"
-            aria-label="Close"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-
-        {/* Showings */}
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          <div className="flex flex-col gap-2 items-center pb-2">
-            {state.showings.map(s => (
-              <div key={s.id} className="flex items-center gap-2">
-                <TimeChip showing={s} cinemaWebsite={state.cinemaWebsite} />
-                <button
-                  onClick={() => copyShowing(s)}
-                  aria-label="Copy to clipboard"
-                  className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-                >
-                  {copiedId === s.id
-                    ? <Check className="size-3.5 text-green-500" />
-                    : <Share2 className="size-3.5" />}
-                </button>
-                <button
-                  onClick={() => addToCalendar(s)}
-                  aria-label={t.schedule.addToCalendar}
-                  className="shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
-                >
-                  <CalendarPlus className="size-3.5" />
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    <ShowingModal
+      title={state.cinemaName}
+      dateLabel={dateLabel}
+      posterUrl={state.posterUrl}
+      posterFallbackUrl={state.posterFallbackUrl}
+      movieTitle={state.movieTitle}
+      cinemaName={state.cinemaName}
+      cinemaWebsite={state.cinemaWebsite}
+      showings={state.showings}
+      selectedId={state.selectedId}
+      onClose={onClose}
+    />
   );
 }
 
@@ -201,7 +105,7 @@ function TotemMarker({
   showings: MovieShowing[];
   isExpanded: boolean;
   openAir?: boolean;
-  onChipClick: (date: string) => void;
+  onChipClick: (date: string, showingId?: number) => void;
 }) {
   const { t } = useLang();
   const overflow = showings.length > 3 ? showings.length - 2 : 0;
@@ -234,7 +138,7 @@ function TotemMarker({
               {visible.map(s => (
                 <button
                   key={s.id}
-                  onClick={() => onChipClick(s.datetime.slice(0, 10))}
+                  onClick={() => onChipClick(s.datetime.slice(0, 10), s.id)}
                   className={[
                     "tabular-nums font-bold text-xs leading-none px-2 py-1.5 rounded-sm border transition-colors cursor-pointer",
                     s.bookingUrl
@@ -444,9 +348,11 @@ function MapAutoCenter({ markers, userPos }: { markers: MovieCinemaMarker[]; use
 interface MovieMapProps {
   markers: MovieCinemaMarker[];
   movieTitle?: string;
+  posterUrl?: string;
+  posterFallbackUrl?: string;
 }
 
-export function MovieMap({ markers, movieTitle }: MovieMapProps) {
+export function MovieMap({ markers, movieTitle, posterUrl, posterFallbackUrl }: MovieMapProps) {
   const [modal, setModal] = useState<ModalState | null>(null);
   const [hoveredCinemas, setHoveredCinemas]   = useState<Set<string>>(new Set());
   const [centeredCinemas, setCenteredCinemas] = useState<Set<string>>(new Set());
@@ -484,13 +390,16 @@ export function MovieMap({ markers, movieTitle }: MovieMapProps) {
                     showings={m.showings}
                     isExpanded={isExpanded}
                     openAir={m.openAir}
-                    onChipClick={(date) =>
+                    onChipClick={(date, showingId) =>
                       setModal({
                         movieTitle,
                         cinemaName: m.cinemaName,
                         cinemaWebsite: m.cinemaWebsite,
                         date,
                         showings: m.showings.filter(s => s.datetime.startsWith(date)),
+                        posterUrl,
+                        posterFallbackUrl,
+                        selectedId: showingId,
                       })
                     }
                   />
@@ -505,6 +414,8 @@ export function MovieMap({ markers, movieTitle }: MovieMapProps) {
                         cinemaWebsite: m.cinemaWebsite,
                         date,
                         showings: m.showings,
+                        posterUrl,
+                        posterFallbackUrl,
                       })
                     }
                   />

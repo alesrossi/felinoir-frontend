@@ -46,7 +46,7 @@ function CinemaRow({
 }: {
   marker: MovieCinemaMarker;
   isFavourite: boolean;
-  onOpenModal: () => void;
+  onOpenModal: (showingId: number) => void;
 }) {
   const chipClass = "inline-flex flex-col items-center rounded-sm px-2.5 py-1.5 transition-colors text-xs tabular-nums font-bold leading-none";
   return (
@@ -71,7 +71,7 @@ function CinemaRow({
           return (
             <button
               key={s.id}
-              onClick={onOpenModal}
+              onClick={() => onOpenModal(s.id)}
               className={`${chipClass} bg-roman/10 text-roman-muted border border-roman/30 hover:bg-roman/20`}
             >
               {s.time}{badges}
@@ -86,10 +86,14 @@ function CinemaRow({
 function ShowingsList({
   markers,
   movieTitle,
+  posterUrl,
+  posterFallbackUrl,
   dateStr,
 }: {
   markers: MovieCinemaMarker[];
   movieTitle?: string;
+  posterUrl?: string;
+  posterFallbackUrl?: string;
   dateStr: string;
 }) {
   const { locale } = useLang();
@@ -108,13 +112,16 @@ function ShowingsList({
     };
   }, []);
 
-  function openModal(m: MovieCinemaMarker) {
+  function openModal(m: MovieCinemaMarker, showingId: number) {
     setModal({
       movieTitle,
       cinemaName: m.cinemaName,
       cinemaWebsite: m.cinemaWebsite,
       date: dateStr,
       showings: m.showings,
+      posterUrl,
+      posterFallbackUrl,
+      selectedId: showingId,
     });
   }
 
@@ -129,7 +136,7 @@ function ShowingsList({
             key={m.cinemaId}
             marker={m}
             isFavourite={favourites.has(m.cinemaId)}
-            onOpenModal={() => openModal(m)}
+            onOpenModal={(id) => openModal(m, id)}
           />
         ))}
       </ul>
@@ -152,7 +159,7 @@ function ShowingsList({
                   key={m.cinemaId}
                   marker={m}
                   isFavourite={favourites.has(m.cinemaId)}
-                  onOpenModal={() => openModal(m)}
+                  onOpenModal={(id) => openModal(m, id)}
                 />
               ))}
             </ul>
@@ -274,6 +281,8 @@ function DateNavigator({
 interface MovieSchedulePanelProps {
   markers: MovieCinemaMarker[]; // all cinemas for this movie, active flag ignored (computed here)
   movieTitle?: string;
+  posterUrl?: string;         // shown in the screening modal
+  posterFallbackUrl?: string;
   movieLanguage?: string; // tmdbLanguage, e.g. "it", "en", "fr"
   view?: "map" | "list";
   onFilteredCountChange?: (count: number) => void;
@@ -315,7 +324,7 @@ function availableDatesFor(
   return [...dates].sort();
 }
 
-export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = "map", onFilteredCountChange, toolbar }: MovieSchedulePanelProps) {
+export function MovieSchedulePanel({ markers, movieTitle, posterUrl, posterFallbackUrl, movieLanguage, view = "map", onFilteredCountChange, toolbar }: MovieSchedulePanelProps) {
   const { t } = useLang();
   const [selectedDate, setSelectedDate] = useState<Date>(() => romeToday());
   const [selectedCinemas, setSelectedCinemas] = useState<Set<string>>(new Set());
@@ -454,9 +463,9 @@ export function MovieSchedulePanel({ markers, movieTitle, movieLanguage, view = 
             )}
           </div>
         ) : view === "list" ? (
-          <ShowingsList markers={filteredMarkers} movieTitle={movieTitle} dateStr={dateStr} />
+          <ShowingsList markers={filteredMarkers} movieTitle={movieTitle} posterUrl={posterUrl} posterFallbackUrl={posterFallbackUrl} dateStr={dateStr} />
         ) : (
-          <MovieMap markers={filteredMarkers} movieTitle={movieTitle} />
+          <MovieMap markers={filteredMarkers} movieTitle={movieTitle} posterUrl={posterUrl} posterFallbackUrl={posterFallbackUrl} />
         )}
       </div>
     </div>

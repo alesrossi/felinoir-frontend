@@ -83,6 +83,8 @@ export function MovieDetailLayout({
         <MovieSchedulePanel
           markers={markers}
           movieTitle={movieTitle}
+          posterUrl={movie.tmdbPosterUrl}
+          posterFallbackUrl={movie.posterUrl}
           movieLanguage={movieLanguage}
           view={view}
           onFilteredCountChange={setFilteredCinemaCount}

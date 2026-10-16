@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Film, X, ChevronLeft, ChevronRight, Share2, Check, CalendarPlus, ArrowUpRight } from "lucide-react";
+import { Film, ChevronLeft, ChevronRight } from "lucide-react";
 import { useLang } from "@/lib/lang";
 import { moviePath } from "@/lib/structured-data/constants";
-import { downloadShowingIcs, showingShareText } from "@/lib/showing-actions";
+import { ShowingModal } from "@/components/showing-modal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -77,7 +77,7 @@ function PosterThumb({ src, className }: { src?: string; className: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Modal — one day's screenings for one film, with booking + copy
+// Modal payload — rendered by the shared ShowingModal
 // ---------------------------------------------------------------------------
 
 interface ModalPayload {
@@ -88,107 +88,6 @@ interface ModalPayload {
   date: string;
   slots: ScreeningSlot[];
   selectedId: number;
-}
-
-const iconButton =
-  "btn-roman grid size-8 place-items-center rounded-full active:scale-[0.92]";
-
-function Modal({ payload, onClose }: { payload: ModalPayload; onClose: () => void }) {
-  const [copiedId, setCopiedId] = useState<number | null>(null);
-  const { t, locale } = useLang();
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const context = { movieTitle: payload.title, cinemaName: payload.cinemaName ?? "" };
-
-  function copySlot(slot: ScreeningSlot) {
-    navigator.clipboard.writeText(showingShareText(slot, { ...context, dateLabel: payload.date, locale })).catch(() => {});
-    setCopiedId(slot.id);
-    setTimeout(() => setCopiedId(null), 2000);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in-0 duration-200" />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={payload.title}
-        className="relative z-10 flex w-full max-w-sm max-h-[85vh] flex-col rounded-2xl bg-popover p-5 shadow-2xl ring-1 ring-foreground/10 animate-in fade-in-0 zoom-in-95 duration-200 ease-out"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start gap-4 shrink-0">
-          <PosterThumb src={payload.posterUrl} className="w-12 aspect-[2/3] shrink-0 rounded-md ring-1 ring-foreground/10" />
-          <div className="min-w-0 pt-0.5">
-            <p className="font-serif text-lg font-medium leading-tight tracking-[-0.01em] text-foreground">{payload.title}</p>
-            <p className="mt-1 text-sm capitalize text-foreground/60">{payload.date}</p>
-          </div>
-          <button
-            onClick={onClose}
-            className="btn-roman -mr-1 -mt-1 ml-auto grid size-8 shrink-0 place-items-center rounded-full active:scale-[0.92]"
-            aria-label="Close"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        <ul className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1 space-y-1">
-          {payload.slots.map((slot) => {
-            const href = slot.bookingUrl ?? payload.cinemaWebsite;
-            const isCopied = copiedId === slot.id;
-            const isSelected = slot.id === payload.selectedId;
-            return (
-              <li
-                key={slot.id}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2 ${
-                  isSelected ? "bg-roman/10 ring-1 ring-inset ring-roman/30" : "bg-foreground/[0.04]"
-                }`}
-              >
-                <span className="text-lg font-semibold tabular-nums tracking-tight text-foreground">{slot.time}</span>
-                <span className="flex gap-1">
-                  {slot.isOV && <span className="rounded px-1 text-[10px] font-bold tracking-wide text-roman-muted ring-1 ring-inset ring-roman/35">OV</span>}
-                  {slot.is3D && <span className="rounded px-1 text-[10px] font-bold tracking-wide text-foreground/60 ring-1 ring-inset ring-foreground/20">3D</span>}
-                </span>
-                <div className="ml-auto flex items-center gap-1">
-                  <button
-                    onClick={() => copySlot(slot)}
-                    aria-label={t.cinema.copy}
-                    title={t.cinema.copy}
-                    className={iconButton}
-                  >
-                    {isCopied ? <Check className="size-3.5 text-green-500" /> : <Share2 className="size-3.5" />}
-                  </button>
-                  <button
-                    onClick={() => downloadShowingIcs(slot, context)}
-                    aria-label={t.schedule.addToCalendar}
-                    title={t.schedule.addToCalendar}
-                    className={iconButton}
-                  >
-                    <CalendarPlus className="size-3.5" />
-                  </button>
-                  {href && (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn-roman inline-flex h-8 items-center gap-1 rounded-full pl-3 pr-2.5 text-xs font-semibold active:scale-[0.96]"
-                    >
-                      {t.cinema.book}
-                      <ArrowUpRight className="size-3.5" />
-                    </a>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </div>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -394,7 +293,19 @@ export function CinemaScheduleGrid({ dates, rows, cinemaName, cinemaWebsite }: P
         </section>
       )}
 
-      {modal && <Modal payload={modal} onClose={() => setModal(null)} />}
+      {modal && (
+        <ShowingModal
+          title={modal.title}
+          dateLabel={modal.date}
+          posterUrl={modal.posterUrl}
+          movieTitle={modal.title}
+          cinemaName={modal.cinemaName ?? ""}
+          cinemaWebsite={modal.cinemaWebsite}
+          showings={modal.slots}
+          selectedId={modal.selectedId}
+          onClose={() => setModal(null)}
+        />
+      )}
     </>
   );
 }
