@@ -10,7 +10,7 @@ interface Props {
 
 export function ConditionalFabs({ cinemas }: Props) {
   const pathname = usePathname();
-  if (pathname.startsWith("/felix")) return null;
+  if (pathname.startsWith("/felix") || pathname.startsWith("/e/")) return null;
   return (
     <>
       <GlobalFilterFab cinemas={cinemas} />

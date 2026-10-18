@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Share2, Check, CalendarPlus, ArrowUpRight } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { X, Share2, Check, CalendarPlus, ArrowUpRight, ArrowLeft, UserPlus } from "lucide-react";
 import { PosterImage } from "@/components/ui/poster-image";
 import { useLang } from "@/lib/lang";
 import { downloadShowingIcs, showingShareText, type ShareableShowing } from "@/lib/showing-actions";
+import { lobbyErrorText, lobbyRequest, rememberName, rememberedName } from "@/lib/lobby-client";
 
 // ---------------------------------------------------------------------------
 // One day's screenings of one film at one cinema, with book / share / calendar
@@ -44,13 +46,19 @@ export function ShowingModal({
   onClose,
 }: ShowingModalProps) {
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  // The showing an invite page is being made for; swaps the list for a form.
+  const [inviting, setInviting] = useState<ShareableShowing | null>(null);
   const { t, locale } = useLang();
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose(); }
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (inviting) setInviting(null);
+      else onClose();
+    }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  }, [onClose, inviting]);
 
   const context = { movieTitle, cinemaName };
 
@@ -91,6 +99,9 @@ export function ShowingModal({
           </button>
         </div>
 
+        {inviting ? (
+          <InviteForm showing={inviting} dateLabel={dateLabel} onBack={() => setInviting(null)} />
+        ) : (
         <ul className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1 space-y-1">
           {showings.map((s) => {
             const href = s.bookingUrl ?? cinemaWebsite;
@@ -113,6 +124,14 @@ export function ShowingModal({
                   {s.is3D && <span className="rounded px-1 text-[10px] font-bold tracking-wide text-foreground/60 ring-1 ring-inset ring-foreground/20">3D</span>}
                 </span>
                 <div className="ml-auto flex items-center gap-1">
+                  <button
+                    onClick={() => setInviting(s)}
+                    aria-label={t.lobby.invite}
+                    title={t.lobby.invite}
+                    className={iconButton}
+                  >
+                    <UserPlus className="size-3.5" />
+                  </button>
                   <button
                     onClick={() => copy(s)}
                     aria-label={t.cinema.copy}
@@ -145,7 +164,82 @@ export function ShowingModal({
             );
           })}
         </ul>
+        )}
       </div>
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Invite step — creates a lobby for one showing and opens it
+// ---------------------------------------------------------------------------
+
+const fieldClass =
+  "w-full rounded-xl bg-foreground/[0.05] px-3 py-2.5 text-sm text-foreground placeholder:text-foreground/40 ring-1 ring-inset ring-foreground/10 outline-none focus:ring-2 focus:ring-roman/50";
+
+function InviteForm({ showing, dateLabel, onBack }: { showing: ShareableShowing; dateLabel: string; onBack: () => void }) {
+  const { t } = useLang();
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => { setName(rememberedName()); }, []);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || busy) return;
+    setBusy(true);
+    setError(null);
+    const res = await lobbyRequest("POST", "", { screeningId: showing.id, name: name.trim(), note: note.trim() || undefined });
+    if (res.ok) {
+      rememberName(name);
+      router.push(`/e/${res.lobby.id}`);
+      return; // keep the button busy while the page loads
+    }
+    setError(lobbyErrorText(t, res.error));
+    setBusy(false);
+  }
+
+  return (
+    <form onSubmit={submit} className="flex flex-col gap-3 animate-in fade-in-0 duration-200">
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={onBack} aria-label={t.lobby.back} className="btn-roman grid size-8 place-items-center rounded-full active:scale-[0.92]">
+          <ArrowLeft className="size-4" />
+        </button>
+        <p className="text-sm font-semibold text-foreground">{t.lobby.invite}</p>
+        <p className="ml-auto text-sm tabular-nums text-foreground/60">
+          <span className="capitalize">{dateLabel}</span> · {showing.time}
+        </p>
+      </div>
+      <p className="text-sm leading-relaxed text-foreground/60">{t.lobby.inviteHint}</p>
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        maxLength={40}
+        placeholder={t.lobby.yourName}
+        aria-label={t.lobby.yourName}
+        className={fieldClass}
+      />
+      <textarea
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        maxLength={500}
+        rows={2}
+        placeholder={t.lobby.notePlaceholder}
+        aria-label={t.lobby.noteOptional}
+        className={`${fieldClass} resize-none`}
+      />
+      {error && <p role="alert" className="text-sm text-roman-muted">{error}</p>}
+      <button
+        type="submit"
+        disabled={!name.trim() || busy}
+        className="btn-roman-on h-10 rounded-full text-sm font-semibold active:scale-[0.98] disabled:opacity-50"
+      >
+        {t.lobby.create}
+      </button>
+    </form>
   );
 }
