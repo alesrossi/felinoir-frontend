@@ -6,7 +6,7 @@ import { getCinemasConfig } from "@/lib/cinemas-config";
 import { romeWallClockKey } from "@/lib/og/showtimes";
 import { OG_IMAGE_SIZE } from "@/lib/og/constants";
 import { MovieDetailLayout } from "./movie-detail-layout";
-import { parseCountryCodes, parseCredits, pickBackdropUrl } from "@/lib/tmdb-images";
+import { parseCompanyNames, parseCountryCodes, parseCredits, pickBackdropUrl } from "@/lib/tmdb-images";
 import type { MovieCinemaMarker, MovieShowing } from "@/components/map/movie-map";
 import {
   JsonLd,
@@ -167,6 +167,8 @@ export default async function MoviePage({ params }: PageProps) {
     budget: movie.tmdbBudget,
     revenue: movie.tmdbRevenue,
     awards: movie.awards,
+    companies: parseCompanyNames(movie.tmdbProductionCompanies),
+    tagline: movie.tmdbTagline,
   };
 
   const displayTitle = localizedTitle(movie, SERVER_LOCALE);

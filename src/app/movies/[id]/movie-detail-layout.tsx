@@ -78,7 +78,9 @@ export function MovieDetailLayout({
 
   return (
     <div className="flex flex-col lg:flex-row lg:flex-1 lg:min-h-0">
-      <div className="border-b lg:border-b-0 lg:border-r border-border lg:w-[clamp(420px,34vw,540px)] lg:shrink-0 lg:overflow-y-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--foreground)/0.15)_transparent]">
+      {/* Mobile: no box of its own, so the info panel's blocks can sit before
+          and after the schedule (see the order classes in MovieInfoPanel). */}
+      <div className="max-lg:contents lg:border-r border-border lg:w-[clamp(420px,34vw,540px)] lg:shrink-0 lg:overflow-y-auto [scrollbar-width:thin] [scrollbar-color:hsl(var(--foreground)/0.15)_transparent]">
         <MovieInfoPanel
           movie={movie}
           markersCount={filteredCinemaCount}
@@ -88,7 +90,7 @@ export function MovieDetailLayout({
           viewToggle={viewToggle}
         />
       </div>
-      <div className="h-[70dvh] lg:h-auto lg:flex-1 lg:min-w-0">
+      <div className="h-[70dvh] max-lg:order-2 lg:h-auto lg:flex-1 lg:min-w-0">
         <MovieSchedulePanel
           markers={markers}
           movieTitle={movieTitle}

@@ -137,6 +137,9 @@ export interface MovieInfoData {
   budget?: number;
   revenue?: number;
   awards?: string;
+  companies?: string[];
+  /** TMDb's tagline — stored in Italian only. */
+  tagline?: string;
 }
 
 interface MovieInfoPanelProps {
@@ -225,9 +228,15 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
     { label: t.movie.releaseDate,   value: formatReleaseDate(movie.released, locale) },
     { label: t.movie.country,       value: countries },
     { label: t.movie.language,      value: movie.tmdbLanguage ? displayName(movie.tmdbLanguage, "language", locale) : undefined },
-    { label: t.movie.certification, value: movie.contentRating },
+    {
+      label: t.movie.certification,
+      value: movie.contentRating
+        ? [movie.contentRating, t.movie.certifications[movie.contentRating]].filter(Boolean).join(" · ")
+        : undefined,
+    },
     { label: t.movie.budget,        value: formatMoney(movie.budget, locale) },
     { label: t.movie.boxOffice,     value: formatMoney(movie.revenue, locale) },
+    { label: t.movie.production,    value: movie.companies?.length ? movie.companies.slice(0, 3).join(", ") : undefined, wide: true },
     { label: t.movie.awards,        value: localizeAwards(movie.awards, locale), wide: true },
   ];
 
@@ -281,7 +290,10 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
         </div>
       </div>
 
-      <div className="relative isolate -mt-14">
+      {/* On mobile the layout lays these blocks out around the schedule:
+          hero, scores and plot (order-1) → map/list (order-2) → cast,
+          crew and details (order-3). */}
+      <div className="relative isolate -mt-14 max-lg:order-1">
         {/* Ambient backdrop — a still from the film, dissolving into the page */}
         {movie.backdropUrl && (
           <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[340px] overflow-hidden">
@@ -297,20 +309,20 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
           </div>
         )}
 
-        <div className="px-6 pt-24 pb-28 lg:px-8 space-y-8">
+        <div className="px-6 pt-20 pb-4 lg:px-8 lg:pt-24 lg:pb-0 space-y-6 lg:space-y-8">
           {/* Hero: poster + identity */}
           <div className="flex items-end gap-6">
             <PosterImage
               primary={movie.tmdbPosterUrl}
               fallback={movie.posterUrl}
               alt={`${displayTitle} poster`}
-              className="w-32 xl:w-36 shrink-0 aspect-[2/3] rounded-lg object-cover ring-1 ring-black/10 dark:ring-white/10 shadow-[0_24px_48px_-16px_rgba(0,0,0,0.55)]"
-              placeholderClassName="w-32 xl:w-36 shrink-0 aspect-[2/3] rounded-lg ring-1 ring-foreground/10 bg-muted"
+              className="w-24 sm:w-32 xl:w-36 shrink-0 aspect-[2/3] rounded-lg object-cover ring-1 ring-black/10 dark:ring-white/10 shadow-[0_24px_48px_-16px_rgba(0,0,0,0.55)]"
+              placeholderClassName="w-24 sm:w-32 xl:w-36 shrink-0 aspect-[2/3] rounded-lg ring-1 ring-foreground/10 bg-muted"
               priority
             />
 
             <div className="min-w-0 pb-1">
-              <h1 className="font-serif text-[1.75rem] xl:text-[2rem] font-medium leading-[1.08] tracking-[-0.015em] text-foreground text-balance">
+              <h1 className="font-serif text-2xl sm:text-[1.75rem] xl:text-[2rem] font-medium leading-[1.08] tracking-[-0.015em] text-foreground text-balance">
                 {displayTitle}
               </h1>
               {movie.originalTitle && movie.originalTitle !== displayTitle && (
@@ -390,9 +402,12 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
             ))}
           </dl>
 
-          {/* Plot */}
+          {/* Plot, led by the tagline when there is one */}
           {plot && (
             <div>
+              {locale === "it" && movie.tagline && (
+                <p className="mb-3 font-serif text-lg italic leading-snug text-foreground/85">{movie.tagline}</p>
+              )}
               <p className={`text-[15px] leading-[1.65] text-foreground/80 max-w-prose ${plotLong && !plotOpen ? "line-clamp-5" : ""}`}>
                 {plot}
               </p>
@@ -407,76 +422,10 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
             </div>
           )}
 
-          {/* Cast — photos in a row that scrolls sideways */}
-          <section>
-            <SectionTitle>{t.movie.cast}</SectionTitle>
-            {cast.length > 0 ? (
-              <ul className="-mx-6 flex gap-3 overflow-x-auto scrollbar-hide px-6 lg:-mx-8 lg:px-8 [mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%-24px),transparent)]">
-                {cast.map((p) => (
-                  <li key={`${p.id}-${p.name}`} className="w-[76px] shrink-0 text-center">
-                    <PersonPhoto person={p} className="mx-auto size-16 text-base" />
-                    <p className="mt-2 text-xs font-medium leading-tight text-foreground/90 line-clamp-2">{p.name}</p>
-                    {p.role && <p className="mt-0.5 text-[11px] leading-tight text-foreground/50 line-clamp-2">{p.role}</p>}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-sm text-foreground/35">{t.movie.na}</p>
-            )}
-          </section>
-
-          {/* Crew — one row per role */}
-          <section>
-            <SectionTitle>{t.movie.crew}</SectionTitle>
-            <ul className="space-y-3">
-              {crew.map(({ label, people }) => (
-                <li key={label} className="flex items-center gap-3">
-                  {people.length > 0 ? (
-                    <span className="flex shrink-0 -space-x-2.5">
-                      {people.slice(0, 2).map((p) => (
-                        <PersonPhoto key={`${p.id}-${p.name}`} person={p} className="size-10 text-xs ring-2 ring-background" />
-                      ))}
-                    </span>
-                  ) : (
-                    <span aria-hidden className="size-10 shrink-0 rounded-full bg-foreground/[0.05]" />
-                  )}
-                  <div className="min-w-0 text-sm">
-                    <p className="text-xs text-foreground/50">{label}</p>
-                    {people.length > 0 ? (
-                      <p className="text-foreground/85 leading-snug">
-                        {people.map((p, i) => (
-                          <React.Fragment key={`${p.id}-${p.name}`}>
-                            {i > 0 && ", "}
-                            {p.name}
-                            {p.role && <span className="text-foreground/45"> ({p.role})</span>}
-                          </React.Fragment>
-                        ))}
-                      </p>
-                    ) : (
-                      <p className="text-foreground/35">{t.movie.na}</p>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {/* Details — fixed set of facts, "N/A" when unknown */}
-          <section>
-            <SectionTitle>{t.movie.details}</SectionTitle>
-            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-foreground/[0.06] ring-1 ring-inset ring-foreground/[0.06]">
-              {details.map(({ label, value, wide }) => (
-                <div key={label} className={`bg-background px-4 py-3 ${wide ? "col-span-2" : ""}`}>
-                  <dt className="text-[11px] text-foreground/50">{label}</dt>
-                  <dd className={`mt-0.5 text-sm ${value ? "text-foreground/85" : "text-foreground/35"}`}>{value ?? t.movie.na}</dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-
-          {/* Where to watch — on desktop this lives in the schedule header */}
+          {/* Where to watch — on desktop this lives in the schedule header. On
+              mobile it heads the map, which follows straight after. */}
           <div className="flex items-center justify-between lg:hidden">
-            <h2 className="text-sm font-medium text-foreground/70">{t.movie.whereToWatch}</h2>
+            <h2 className="text-base font-semibold tracking-[-0.01em] text-foreground">{t.movie.whereToWatch}</h2>
             <div className="flex items-center gap-2">
               {markersCount > 0 && (
                 <p className="text-xs text-foreground/50 tabular-nums">{t.movie.cinemas(markersCount)}</p>
@@ -485,6 +434,81 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Cast, crew and details. Below the schedule on mobile. */}
+      <div className="px-6 pt-8 pb-28 lg:px-8 space-y-8 max-lg:order-3 max-lg:border-t max-lg:border-border">
+        {/* Cast — photos in a row that scrolls sideways */}
+        <section>
+          <SectionTitle>{t.movie.cast}</SectionTitle>
+          {cast.length > 0 ? (
+            <ul className="-mx-6 flex gap-3 overflow-x-auto scrollbar-hide px-6 lg:-mx-8 lg:px-8 [mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%-24px),transparent)]">
+              {cast.map((p) => (
+                <li key={`${p.id}-${p.name}`} className="w-[76px] shrink-0 text-center">
+                  <PersonPhoto person={p} className="mx-auto size-16 text-base" />
+                  <p className="mt-2 text-xs font-medium leading-tight text-foreground/90 line-clamp-2">{p.name}</p>
+                  {p.role && <p className="mt-0.5 text-[11px] leading-tight text-foreground/50 line-clamp-2">{p.role}</p>}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-foreground/35">{t.movie.na}</p>
+          )}
+        </section>
+
+        {/* Crew — one row per role; a fixed photo slot keeps every name on the same line */}
+        <section>
+          <SectionTitle>{t.movie.crew}</SectionTitle>
+          <ul className="space-y-3.5">
+            {crew.map(({ label, people }) => (
+              <li key={label} className="flex items-center gap-3">
+                <span className="flex w-[58px] shrink-0">
+                  {people.length > 0 ? (
+                    people.slice(0, 2).map((p, i) => (
+                      <PersonPhoto
+                        key={`${p.id}-${p.name}`}
+                        person={p}
+                        className={`size-10 text-xs ring-2 ring-background ${i > 0 ? "-ml-[22px]" : ""}`}
+                      />
+                    ))
+                  ) : (
+                    <span aria-hidden className="size-10 rounded-full bg-foreground/[0.05]" />
+                  )}
+                </span>
+                <div className="min-w-0 text-sm">
+                  <p className="text-[11px] text-foreground/50">{label}</p>
+                  {people.length > 0 ? (
+                    <p className="mt-0.5 leading-snug text-foreground/85">
+                      {people.map((p, i) => (
+                        <React.Fragment key={`${p.id}-${p.name}`}>
+                          {i > 0 && ", "}
+                          {p.name}
+                          {p.role && <span className="text-foreground/45"> ({p.role})</span>}
+                        </React.Fragment>
+                      ))}
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-foreground/35">{t.movie.na}</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Details — fixed set of facts, "N/A" when unknown. Open list with
+            hairlines rather than another box, so it reads as reference info. */}
+        <section>
+          <SectionTitle>{t.movie.details}</SectionTitle>
+          <dl className="grid grid-cols-2 gap-x-6 border-b border-foreground/[0.08]">
+            {details.map(({ label, value, wide }) => (
+              <div key={label} className={`border-t border-foreground/[0.08] py-2.5 ${wide ? "col-span-2" : ""}`}>
+                <dt className="text-[11px] text-foreground/50">{label}</dt>
+                <dd className={`mt-0.5 text-sm ${value ? "text-foreground/85" : "text-foreground/35"}`}>{value ?? t.movie.na}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
       </div>
 
       {/* Trailer modal */}

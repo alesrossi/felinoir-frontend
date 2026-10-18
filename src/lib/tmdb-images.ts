@@ -80,3 +80,14 @@ export function parseCountryCodes(raw: string | undefined): string[] {
     return [];
   }
 }
+
+/** Company names from `tmdbProductionCompanies`, in TMDb's order. */
+export function parseCompanyNames(raw: string | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const list: { name?: string }[] = JSON.parse(raw);
+    return list.map((c) => c.name).filter((n): n is string => !!n);
+  } catch {
+    return [];
+  }
+}
