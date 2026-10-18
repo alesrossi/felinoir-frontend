@@ -92,6 +92,7 @@ const en = {
   },
   lobby: {
     invite: "Invite friends",
+    organize: "Create an event",
     inviteHint: "We'll make a page for this screening. Share the link in your group and everyone adds their name.",
     yourName: "Your name",
     note: "Note",
@@ -236,6 +237,7 @@ const it: typeof en = {
   },
   lobby: {
     invite: "Invita amici",
+    organize: "Organizza un'uscita",
     inviteHint: "Creiamo una pagina per questa proiezione. Condividi il link nel gruppo e ognuno aggiunge il proprio nome.",
     yourName: "Il tuo nome",
     note: "Nota",

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, Share2, Check, CalendarPlus, ArrowUpRight, ArrowLeft, UserPlus } from "lucide-react";
+import { X, Share2, Check, CalendarPlus, ArrowUpRight, ArrowLeft, UserPlus, Plus } from "lucide-react";
 import { PosterImage } from "@/components/ui/poster-image";
 import { useLang } from "@/lib/lang";
 import { downloadShowingIcs, showingShareText, type ShareableShowing } from "@/lib/showing-actions";
@@ -46,19 +46,27 @@ export function ShowingModal({
   onClose,
 }: ShowingModalProps) {
   const [copiedId, setCopiedId] = useState<number | null>(null);
-  // The showing an invite page is being made for; swaps the list for a form.
+  // The showing an event is being organised for; swaps the list for the
+  // "what kind of event" step, then for the lobby form.
   const [inviting, setInviting] = useState<ShareableShowing | null>(null);
+  const [inviteStep, setInviteStep] = useState<"choose" | "lobby">("choose");
   const { t, locale } = useLang();
+
+  function startInvite(s: ShareableShowing) {
+    setInviting(s);
+    setInviteStep("choose");
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== "Escape") return;
-      if (inviting) setInviting(null);
+      if (inviting && inviteStep === "lobby") setInviteStep("choose");
+      else if (inviting) setInviting(null);
       else onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, inviting]);
+  }, [onClose, inviting, inviteStep]);
 
   const context = { movieTitle, cinemaName };
 
@@ -99,8 +107,10 @@ export function ShowingModal({
           </button>
         </div>
 
-        {inviting ? (
-          <InviteForm showing={inviting} dateLabel={dateLabel} onBack={() => setInviting(null)} />
+        {inviting && inviteStep === "choose" ? (
+          <EventTypePicker onBack={() => setInviting(null)} onLobby={() => setInviteStep("lobby")} />
+        ) : inviting ? (
+          <InviteForm showing={inviting} dateLabel={dateLabel} onBack={() => setInviteStep("choose")} />
         ) : (
         <ul className="min-h-0 flex-1 overflow-y-auto -mx-1 px-1 space-y-1">
           {showings.map((s) => {
@@ -125,7 +135,7 @@ export function ShowingModal({
                 </span>
                 <div className="ml-auto flex items-center gap-1">
                   <button
-                    onClick={() => setInviting(s)}
+                    onClick={() => startInvite(s)}
                     aria-label={t.lobby.invite}
                     title={t.lobby.invite}
                     className={iconButton}
@@ -165,6 +175,41 @@ export function ShowingModal({
           })}
         </ul>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Event type step — pick what to organise. Only the lobby exists so far.
+// ---------------------------------------------------------------------------
+
+function EventTypePicker({ onBack, onLobby }: { onBack: () => void; onLobby: () => void }) {
+  const { t } = useLang();
+  const circle = "grid size-16 place-items-center rounded-full active:scale-[0.94] transition";
+  return (
+    <div className="flex flex-col gap-5 animate-in fade-in-0 duration-200">
+      <div className="flex items-center gap-2">
+        <button type="button" onClick={onBack} aria-label={t.lobby.back} className="btn-roman grid size-8 place-items-center rounded-full active:scale-[0.92]">
+          <ArrowLeft className="size-4" />
+        </button>
+        <p className="text-sm font-semibold text-foreground">{t.lobby.organize}</p>
+      </div>
+      {/* Event types first; the plain lobby ("Invite friends") always stays last. */}
+      <div className="flex justify-center gap-8 pb-2">
+        <div className="flex flex-col items-center gap-2">
+          {/* Placeholder — does nothing yet. Same name in both languages. */}
+          <button type="button" aria-label="Uscite Romane" className={`btn-roman ${circle} text-lg font-semibold tracking-wide`}>
+            UR
+          </button>
+          <span className="text-xs font-medium text-foreground/70">Uscite Romane</span>
+        </div>
+        <div className="flex flex-col items-center gap-2">
+          <button type="button" autoFocus onClick={onLobby} aria-label={t.lobby.invite} className={`btn-roman ${circle}`}>
+            <Plus className="size-7" />
+          </button>
+          <span className="text-xs font-medium text-foreground/70">{t.lobby.invite}</span>
+        </div>
       </div>
     </div>
   );
