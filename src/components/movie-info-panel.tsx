@@ -10,22 +10,8 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Play, X } from "lucide-react";
 import { languageToFlag } from "@/lib/utils";
+import { homeHrefWithFilters } from "@/lib/home-href";
 import type { CreditPerson, MovieCredits } from "@/lib/tmdb-images";
-
-function buildBackHref(base: string): string {
-  try {
-    const raw = localStorage.getItem("cinema-filters");
-    const data: Record<string, string> = raw ? JSON.parse(raw) : {};
-    const params = new URLSearchParams();
-    for (const key of ["q", "cinemas", "dates", "times", "genres", "sort", "ov"] as const) {
-      if (data[key]) params.set(key, data[key]);
-    }
-    const qs = params.toString();
-    return qs ? `${base}?${qs}` : base;
-  } catch {
-    return base;
-  }
-}
 
 function formatRuntime(minutes?: number): string | undefined {
   if (!minutes) return undefined;
@@ -278,7 +264,7 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
         ].join(" ")}
       >
         <button
-          onClick={() => router.push(buildBackHref(backHref))}
+          onClick={() => router.push(homeHrefWithFilters(backHref))}
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-roman-muted active:scale-[0.97] transition"
         >
           <ArrowLeft className="size-4" />
@@ -340,7 +326,7 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
                     return (
                       <button
                         key={g}
-                        onClick={() => { toggleStoredGenre(toEnGenre(g) ?? ""); router.push(buildBackHref("/")); }}
+                        onClick={() => { toggleStoredGenre(toEnGenre(g) ?? ""); router.push(homeHrefWithFilters("/")); }}
                         className={[
                           "rounded-full px-2.5 py-0.5 text-xs transition active:scale-[0.97]",
                           isActive ? "btn-roman-on" : "btn-roman",

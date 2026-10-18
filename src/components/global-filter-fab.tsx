@@ -213,7 +213,9 @@ export function GlobalFilterFab({
 
   // Listen for external filter changes (e.g. FiltersBar "clear all", OpenAirSwitcher)
   useEffect(() => {
-    function onExternalChange() {
+    function onExternalChange(e: Event) {
+      // A full reset (FiltersBar "clear all") navigates home itself.
+      const isReset = (e as CustomEvent<{ reset?: boolean }>).detail?.reset === true;
       const stored = load();
       const cin    = stored.cinemas ? new Set(stored.cinemas.split(",").filter(Boolean)) : new Set<string>();
       const dates  = stored.dates   ? new Set(stored.dates.split(",").filter(Boolean))   : new Set<string>();
@@ -231,7 +233,7 @@ export function GlobalFilterFab({
       setFavouriteIds(loadStoredFavourites());
 
       // Sync URL when on the homepage — use window.location so the closure stays fresh
-      if (window.location.pathname === "/") {
+      if (window.location.pathname === "/" && !isReset) {
         const url = new URL(window.location.href);
         if (cin.size > 0)    url.searchParams.set("cinemas", [...cin].join(","));
         else                 url.searchParams.delete("cinemas");

@@ -63,14 +63,15 @@ export function FiltersBar({ totalShown, totalAll }: FiltersBarProps) {
   function clearAll() {
     setSearch("");
     if (debounceRef.current) clearTimeout(debounceRef.current);
-    // Clear q from URL and all filter params
-    startTransition(() => router.push("/"));
     // Clear everything from localStorage except preserve structure
     try {
       localStorage.removeItem(STORAGE_KEY);
     } catch {}
-    // Tell GlobalFilterFab to reset its state
-    window.dispatchEvent(new CustomEvent(GLOBAL_FILTER_EVENT));
+    // Tell GlobalFilterFab to reset its state. `reset` stops it from also
+    // rewriting the URL (from the current one, which still has ?q=): two
+    // navigations at once and the push home below gets dropped.
+    window.dispatchEvent(new CustomEvent(GLOBAL_FILTER_EVENT, { detail: { reset: true } }));
+    startTransition(() => router.push("/"));
   }
 
   const isFiltered =
