@@ -8,7 +8,7 @@ import { PosterImage } from "@/components/ui/poster-image";
 import { LangSwitcher } from "@/components/lang-switcher";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Play, X } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Play, X } from "lucide-react";
 import { languageToFlag } from "@/lib/utils";
 import { homeHrefWithFilters } from "@/lib/home-href";
 import type { CreditPerson, MovieCredits } from "@/lib/tmdb-images";
@@ -77,6 +77,73 @@ function PersonPhoto({ person, className }: { person: Pick<CreditPerson, "name" 
         />
       )}
     </span>
+  );
+}
+
+/**
+ * Cast photos in a sideways-scrolling row. On desktop, where a mouse can't
+ * swipe and overlay scrollbars stay hidden until used, ‹ › buttons beside the
+ * title page through it. Edges fade only where more people are hidden.
+ */
+function CastRow({ title, cast }: { title: string; cast: CreditPerson[] }) {
+  const ref = useRef<HTMLUListElement>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const update = () => {
+      setCanLeft(el.scrollLeft > 4);
+      setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => { el.removeEventListener("scroll", update); ro.disconnect(); };
+  }, [cast.length]);
+
+  function page(dir: -1 | 1) {
+    const el = ref.current;
+    if (!el) return;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: reduce ? "auto" : "smooth" });
+  }
+
+  const arrow = "btn-roman grid size-7 place-items-center rounded-full active:scale-[0.92] disabled:pointer-events-none disabled:opacity-30";
+
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold tracking-[-0.005em] text-foreground">{title}</h2>
+        {(canLeft || canRight) && (
+          <div className="hidden lg:flex items-center gap-1.5">
+            <button onClick={() => page(-1)} disabled={!canLeft} aria-label="Scroll left" className={arrow}>
+              <ChevronLeft className="size-4" />
+            </button>
+            <button onClick={() => page(1)} disabled={!canRight} aria-label="Scroll right" className={arrow}>
+              <ChevronRight className="size-4" />
+            </button>
+          </div>
+        )}
+      </div>
+      <ul
+        ref={ref}
+        style={{
+          maskImage: `linear-gradient(to right, ${canLeft ? "transparent, black 24px" : "black"}, ${canRight ? "black calc(100% - 24px), transparent" : "black"})`,
+        }}
+        className="-mx-6 flex snap-x gap-3 overflow-x-auto scroll-px-6 px-6 [scrollbar-width:none] lg:-mx-8 lg:scroll-px-8 lg:px-8 lg:pb-3 lg:[scrollbar-width:thin] lg:[scrollbar-color:hsl(var(--foreground)/0.2)_transparent]"
+      >
+        {cast.map((p) => (
+          <li key={`${p.id}-${p.name}`} className="w-[76px] shrink-0 snap-start text-center">
+            <PersonPhoto person={p} className="mx-auto size-16 text-base" />
+            <p className="mt-2 text-xs font-medium leading-tight text-foreground/90 line-clamp-2">{p.name}</p>
+            {p.role && <p className="mt-0.5 text-[11px] leading-tight text-foreground/50 line-clamp-2">{p.role}</p>}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -423,24 +490,18 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
       </div>
 
       {/* Cast, crew and details. Below the schedule on mobile. */}
-      <div className="px-6 pt-8 pb-28 lg:px-8 space-y-8 max-lg:order-3 max-lg:border-t max-lg:border-border">
+      {/* Bottom padding clears the two floating buttons (filters + map) in
+          the bottom-left corner: 2 × 48px + gap + 40px offset, 64px each from sm. */}
+      <div className="px-6 pt-8 pb-44 sm:pb-52 lg:px-8 space-y-8 max-lg:order-3 max-lg:border-t max-lg:border-border">
         {/* Cast — photos in a row that scrolls sideways */}
-        <section>
-          <SectionTitle>{t.movie.cast}</SectionTitle>
-          {cast.length > 0 ? (
-            <ul className="-mx-6 flex gap-3 overflow-x-auto scrollbar-hide px-6 lg:-mx-8 lg:px-8 [mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%-24px),transparent)]">
-              {cast.map((p) => (
-                <li key={`${p.id}-${p.name}`} className="w-[76px] shrink-0 text-center">
-                  <PersonPhoto person={p} className="mx-auto size-16 text-base" />
-                  <p className="mt-2 text-xs font-medium leading-tight text-foreground/90 line-clamp-2">{p.name}</p>
-                  {p.role && <p className="mt-0.5 text-[11px] leading-tight text-foreground/50 line-clamp-2">{p.role}</p>}
-                </li>
-              ))}
-            </ul>
-          ) : (
+        {cast.length > 0 ? (
+          <CastRow title={t.movie.cast} cast={cast} />
+        ) : (
+          <section>
+            <SectionTitle>{t.movie.cast}</SectionTitle>
             <p className="text-sm text-foreground/35">{t.movie.na}</p>
-          )}
-        </section>
+          </section>
+        )}
 
         {/* Crew — one row per role; a fixed photo slot keeps every name on the same line */}
         <section>
