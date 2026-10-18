@@ -124,7 +124,9 @@ export default async function RootLayout({
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
           <LangProvider>
             {children}
-            <div className="fixed bottom-10 left-10 z-40 flex flex-col items-center gap-4">
+            {/* Pages can move the buttons to the right on mobile by setting
+                data-fabs="right" on <html> (the film page does in list view). */}
+            <div className="fixed bottom-10 left-10 z-40 flex flex-col items-center gap-4 max-sm:[html[data-fabs=right]_&]:left-auto max-sm:[html[data-fabs=right]_&]:right-10">
               <ConditionalFabs cinemas={cinemaList} />
             </div>
           </LangProvider>

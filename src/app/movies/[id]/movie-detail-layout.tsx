@@ -40,6 +40,15 @@ export function MovieDetailLayout({
     } catch {}
   }, []);
 
+  // In list view the floating buttons move to the bottom right on mobile
+  // (see the FAB container in the root layout).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (view === "list") root.dataset.fabs = "right";
+    else delete root.dataset.fabs;
+    return () => { delete root.dataset.fabs; };
+  }, [view]);
+
   function selectView(v: "map" | "list") {
     setView(v);
     try { localStorage.setItem(VIEW_KEY, v); } catch {}
