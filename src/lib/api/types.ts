@@ -53,10 +53,12 @@ export interface ApiMovie {
   tmdbKeywords?: string;
   tmdbRecommendations?: string;
   tmdbWatchProviders?: string;
+  tmdbCredits?: string;
   imdbRating?: string;
   imdbVotes?: string;
   rtRating?: string;
   metacriticScore?: string;
+  awards?: string;
   omdbEnrichedAt?: string;
 }
 

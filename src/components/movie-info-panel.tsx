@@ -10,6 +10,7 @@ import { ThemeSwitcher } from "@/components/theme-switcher";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Play, X } from "lucide-react";
 import { languageToFlag } from "@/lib/utils";
+import type { CreditPerson, MovieCredits } from "@/lib/tmdb-images";
 
 function buildBackHref(base: string): string {
   try {
@@ -31,6 +32,70 @@ function formatRuntime(minutes?: number): string | undefined {
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m} min`;
+}
+
+/** "$200M" / "200 Mln USD". TMDb budgets and revenues are in US dollars; 0 means unknown. */
+function formatMoney(amount: number | undefined, locale: string): string | undefined {
+  if (!amount) return undefined;
+  return new Intl.NumberFormat(locale === "en" ? "en-US" : "it-IT", {
+    style: "currency", currency: "USD", notation: "compact", minimumFractionDigits: 0, maximumFractionDigits: 1,
+  }).format(amount);
+}
+
+function formatReleaseDate(released: string | undefined, locale: string): string | undefined {
+  if (!released || !/^\d{4}-\d{2}-\d{2}/.test(released)) return undefined;
+  const [y, m, d] = released.slice(0, 10).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(locale === "en" ? "en-GB" : "it-IT", {
+    day: "numeric", month: "long", year: "numeric", timeZone: "UTC",
+  });
+}
+
+function displayName(code: string, type: "region" | "language", locale: string): string {
+  try {
+    const name = new Intl.DisplayNames([locale === "en" ? "en" : "it"], { type }).of(code) ?? code;
+    return name.charAt(0).toUpperCase() + name.slice(1); // Italian language names are lowercase
+  } catch {
+    return code;
+  }
+}
+
+/** OMDb's awards line is English; translate its few fixed phrases for Italian. */
+function localizeAwards(awards: string | undefined, locale: string): string | undefined {
+  if (!awards || awards === "N/A") return undefined;
+  if (locale === "en") return awards;
+  return awards
+    .replace(/Won (\d+) Oscars?/i, (_, n) => `${n} Oscar vint${n === "1" ? "o" : "i"}`)
+    .replace(/Nominated for (\d+) Oscars?/i, (_, n) => `${n} candidatur${n === "1" ? "a" : "e"} all'Oscar`)
+    .replace(/(\d+) wins?/i, (_, n) => `${n} premi${n === "1" ? "o" : ""}`)
+    .replace(/(\d+) nominations?/i, (_, n) => `${n} candidatur${n === "1" ? "a" : "e"}`)
+    .replace(/ & /g, " e ")
+    .replace(/ total\.?$/i, " in totale");
+}
+
+/** Round photo with initials behind it, so a missing or broken photo still fills the circle. */
+function PersonPhoto({ person, className }: { person: Pick<CreditPerson, "name" | "photoUrl">; className: string }) {
+  const [failed, setFailed] = useState(false);
+  const initials = person.name.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
+  return (
+    <span className={`relative grid shrink-0 place-items-center overflow-hidden rounded-full bg-foreground/[0.07] font-semibold text-foreground/45 ring-1 ring-inset ring-foreground/[0.06] ${className}`}>
+      {initials}
+      {person.photoUrl && !failed && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={person.photoUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+          className="absolute inset-0 size-full object-cover"
+        />
+      )}
+    </span>
+  );
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h2 className="mb-3 text-sm font-semibold tracking-[-0.005em] text-foreground">{children}</h2>;
 }
 
 function extractYoutubeId(url: string): string | null {
@@ -65,6 +130,13 @@ export interface MovieInfoData {
   tmdbTrailerUrlIt?: string;
   tmdbTrailerUrlEn?: string;
   backdropUrl?: string;
+  writer?: string;
+  credits?: MovieCredits;
+  contentRating?: string;
+  countryCodes?: string[];
+  budget?: number;
+  revenue?: number;
+  awards?: string;
 }
 
 interface MovieInfoPanelProps {
@@ -124,7 +196,40 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
     ? genreString.split(",").map((g) => g.trim()).filter(Boolean)
     : movie.scrapedGenres;
 
-  const actorList = movie.actors?.split(",").map((a) => a.trim()).filter(Boolean) ?? [];
+  const splitNames = (names?: string): CreditPerson[] =>
+    (names?.split(",").map((n) => n.trim()).filter(Boolean) ?? []).map((name, i) => ({ id: -i - 1, name }));
+
+  // Cast with photos from TMDb; the plain OMDb names when there are no credits.
+  const cast: CreditPerson[] = movie.credits?.cast.length ? movie.credits.cast : splitNames(movie.actors);
+
+  const writers = movie.credits?.writers.length
+    ? movie.credits.writers.map((w) => ({
+        ...w,
+        role: w.jobs?.map((j) => t.movie.jobs[j] ?? j.toLowerCase()).join(", "),
+      }))
+    : splitNames(movie.writer);
+
+  // Always all four rows — a missing one reads "N/A" instead of disappearing.
+  const crew: { label: string; people: CreditPerson[] }[] = [
+    { label: t.movie.directedBy,     people: movie.credits?.directors.length ? movie.credits.directors : splitNames(movie.director) },
+    { label: t.movie.writing,        people: writers },
+    { label: t.movie.music,          people: movie.credits?.composers ?? [] },
+    { label: t.movie.cinematography, people: movie.credits?.cinematographers ?? [] },
+  ];
+
+  const countries = movie.countryCodes?.length
+    ? movie.countryCodes.map((c) => displayName(c, "region", locale)).join(", ")
+    : movie.tmdbCountry;
+
+  const details: { label: string; value?: string; wide?: boolean }[] = [
+    { label: t.movie.releaseDate,   value: formatReleaseDate(movie.released, locale) },
+    { label: t.movie.country,       value: countries },
+    { label: t.movie.language,      value: movie.tmdbLanguage ? displayName(movie.tmdbLanguage, "language", locale) : undefined },
+    { label: t.movie.certification, value: movie.contentRating },
+    { label: t.movie.budget,        value: formatMoney(movie.budget, locale) },
+    { label: t.movie.boxOffice,     value: formatMoney(movie.revenue, locale) },
+    { label: t.movie.awards,        value: localizeAwards(movie.awards, locale), wide: true },
+  ];
 
   const trailerUrl =
     locale === "en"
@@ -302,23 +407,72 @@ export function MovieInfoPanel({ movie, markersCount, backHref, hasOV, hasNonOV,
             </div>
           )}
 
-          {/* Credits */}
-          {(movie.director || actorList.length > 0) && (
-            <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2.5 text-sm">
-              {movie.director && (
-                <>
-                  <dt className="text-foreground/50">{t.movie.directedBy}</dt>
-                  <dd className="text-foreground/85">{movie.director}</dd>
-                </>
-              )}
-              {actorList.length > 0 && (
-                <>
-                  <dt className="text-foreground/50">{t.movie.cast}</dt>
-                  <dd className="text-foreground/85 leading-relaxed">{actorList.slice(0, 6).join(", ")}</dd>
-                </>
-              )}
+          {/* Cast — photos in a row that scrolls sideways */}
+          <section>
+            <SectionTitle>{t.movie.cast}</SectionTitle>
+            {cast.length > 0 ? (
+              <ul className="-mx-6 flex gap-3 overflow-x-auto scrollbar-hide px-6 lg:-mx-8 lg:px-8 [mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%-24px),transparent)]">
+                {cast.map((p) => (
+                  <li key={`${p.id}-${p.name}`} className="w-[76px] shrink-0 text-center">
+                    <PersonPhoto person={p} className="mx-auto size-16 text-base" />
+                    <p className="mt-2 text-xs font-medium leading-tight text-foreground/90 line-clamp-2">{p.name}</p>
+                    {p.role && <p className="mt-0.5 text-[11px] leading-tight text-foreground/50 line-clamp-2">{p.role}</p>}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-foreground/35">{t.movie.na}</p>
+            )}
+          </section>
+
+          {/* Crew — one row per role */}
+          <section>
+            <SectionTitle>{t.movie.crew}</SectionTitle>
+            <ul className="space-y-3">
+              {crew.map(({ label, people }) => (
+                <li key={label} className="flex items-center gap-3">
+                  {people.length > 0 ? (
+                    <span className="flex shrink-0 -space-x-2.5">
+                      {people.slice(0, 2).map((p) => (
+                        <PersonPhoto key={`${p.id}-${p.name}`} person={p} className="size-10 text-xs ring-2 ring-background" />
+                      ))}
+                    </span>
+                  ) : (
+                    <span aria-hidden className="size-10 shrink-0 rounded-full bg-foreground/[0.05]" />
+                  )}
+                  <div className="min-w-0 text-sm">
+                    <p className="text-xs text-foreground/50">{label}</p>
+                    {people.length > 0 ? (
+                      <p className="text-foreground/85 leading-snug">
+                        {people.map((p, i) => (
+                          <React.Fragment key={`${p.id}-${p.name}`}>
+                            {i > 0 && ", "}
+                            {p.name}
+                            {p.role && <span className="text-foreground/45"> ({p.role})</span>}
+                          </React.Fragment>
+                        ))}
+                      </p>
+                    ) : (
+                      <p className="text-foreground/35">{t.movie.na}</p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {/* Details — fixed set of facts, "N/A" when unknown */}
+          <section>
+            <SectionTitle>{t.movie.details}</SectionTitle>
+            <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-xl bg-foreground/[0.06] ring-1 ring-inset ring-foreground/[0.06]">
+              {details.map(({ label, value, wide }) => (
+                <div key={label} className={`bg-background px-4 py-3 ${wide ? "col-span-2" : ""}`}>
+                  <dt className="text-[11px] text-foreground/50">{label}</dt>
+                  <dd className={`mt-0.5 text-sm ${value ? "text-foreground/85" : "text-foreground/35"}`}>{value ?? t.movie.na}</dd>
+                </div>
+              ))}
             </dl>
-          )}
+          </section>
 
           {/* Where to watch — on desktop this lives in the schedule header */}
           <div className="flex items-center justify-between lg:hidden">
