@@ -91,3 +91,19 @@ export function parseCompanyNames(raw: string | undefined): string[] {
     return [];
   }
 }
+
+/** Same pick as `pickBackdropUrl`, kept as a one-entry JSON list (for slim payloads). */
+export function trimBackdrops(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const list: { file_path?: string; iso_639_1?: string | null; vote_count?: number }[] = JSON.parse(raw);
+    const best = list
+      .filter(b => b.file_path)
+      .sort((a, b) =>
+        Number(a.iso_639_1 != null) - Number(b.iso_639_1 != null) ||
+        (b.vote_count ?? 0) - (a.vote_count ?? 0))[0];
+    return best ? JSON.stringify([{ file_path: best.file_path, iso_639_1: best.iso_639_1 ?? null }]) : undefined;
+  } catch {
+    return undefined;
+  }
+}

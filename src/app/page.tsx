@@ -3,6 +3,24 @@ import { getScreenings } from "@/lib/api/screenings";
 import { MovieGrid } from "@/components/movie-grid";
 import { FiltersBar } from "@/components/filters-bar";
 import { HomeHeader } from "@/components/home-header";
+import type { HomeMovie } from "@/lib/api/types";
+import { trimBackdrops } from "@/lib/tmdb-images";
+
+/**
+ * Only what the homepage's client components read — see HomeMovie. Takes any
+ * movie-shaped object (the carousel sections are typed HomeMovie but hold full
+ * records at runtime) and copies just those fields.
+ */
+function toHomeMovie(m: HomeMovie): HomeMovie {
+  return {
+    id: m.id, slug: m.slug, title: m.title, posterUrl: m.posterUrl,
+    durationMinutes: m.durationMinutes, released: m.released,
+    tmdbTitle: m.tmdbTitle, tmdbTitleEn: m.tmdbTitleEn, tmdbPosterUrl: m.tmdbPosterUrl,
+    tmdbPlot: m.tmdbPlot, tmdbPlotEn: m.tmdbPlotEn, tmdbGenre: m.tmdbGenre, tmdbGenreEn: m.tmdbGenreEn,
+    tmdbLanguage: m.tmdbLanguage, tmdbRating: m.tmdbRating, imdbRating: m.imdbRating,
+    tmdbBackdrops: trimBackdrops(m.tmdbBackdrops),
+  };
+}
 import { HomeCarousels } from "@/components/home-carousels";
 import FooterSection from "@/components/ui/footer";
 import { TIME_RANGES, inTimeRange, minutesFromDatetime } from "@/lib/time-ranges";
@@ -224,7 +242,7 @@ export default async function Home({ searchParams }: PageProps) {
 
         <HomeHeader openAirIds={[...openAirCinemaIds]} />
 
-        <HomeCarousels sections={carouselSections} />
+        <HomeCarousels sections={carouselSections.map((sec) => ({ ...sec, movies: sec.movies.map(toHomeMovie) }))} />
 
         <MovieGrid
           // No <Suspense> around FiltersBar: this page is force-dynamic, so
@@ -232,7 +250,7 @@ export default async function Home({ searchParams }: PageProps) {
           // late — after LangProvider has switched locale — causing a text mismatch.
           toolbar={<FiltersBar totalShown={sorted.length} totalAll={homepageTotal} />}
           sort={sortKey}
-          movies={sorted}
+          movies={sorted.map(toHomeMovie)}
           totalMovies={homepageTotal}
           screeningCounts={Object.fromEntries(countMap)}
           ovMovieIds={[...anyOVMovieIds]}

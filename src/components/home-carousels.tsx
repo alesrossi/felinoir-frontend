@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { useLang } from "@/lib/lang";
 import { moviePath } from "@/lib/structured-data/constants";
 import { pickBackdropUrl } from "@/lib/tmdb-images";
-import type { ApiMovie as MovieRecord } from "@/lib/api/types";
+import type { HomeMovie as MovieRecord } from "@/lib/api/types";
 
 export type CarouselSectionId =
   | "tonight"

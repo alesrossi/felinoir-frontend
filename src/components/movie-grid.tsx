@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { LayoutGrid, LayoutList, Film, ChevronDown } from "lucide-react";
 import { MovieCard } from "@/components/movie-card";
 import { useLang } from "@/lib/lang";
-import type { ApiMovie as MovieRecord } from "@/lib/api/types";
+import type { HomeMovie as MovieRecord } from "@/lib/api/types";
 
 interface MovieGridProps {
   movies: MovieRecord[];

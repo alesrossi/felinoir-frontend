@@ -10,7 +10,7 @@ import { PosterImage } from "@/components/ui/poster-image";
 import { useLang } from "@/lib/lang";
 import { languageToFlag } from "@/lib/utils";
 import { moviePath } from "@/lib/structured-data/constants";
-import type { ApiMovie as MovieRecord } from "@/lib/api/types";
+import type { HomeMovie as MovieRecord } from "@/lib/api/types";
 
 interface MovieCardProps {
   movie: MovieRecord;

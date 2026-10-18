@@ -91,3 +91,17 @@ export interface ApiScreening {
   movie?: ApiMovie;
   cinema?: ApiCinema;
 }
+
+/**
+ * The few fields the homepage's client components (cards, grid, highlights)
+ * read. Server components pass these instead of whole movies: everything
+ * handed to a client component is serialised into the HTML, and full records
+ * (credits, videos, recommendations…) made the homepage several MB.
+ */
+export type HomeMovie = Pick<
+  ApiMovie,
+  | "id" | "slug" | "title" | "posterUrl" | "durationMinutes" | "released"
+  | "tmdbTitle" | "tmdbTitleEn" | "tmdbPosterUrl" | "tmdbPlot" | "tmdbPlotEn"
+  | "tmdbGenre" | "tmdbGenreEn" | "tmdbLanguage" | "tmdbRating" | "imdbRating"
+  | "tmdbBackdrops"
+>;
