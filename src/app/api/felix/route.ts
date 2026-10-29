@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { TRACE_ID_HEADER, traceIdOf } from "@/lib/api/trace";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3001";
 
@@ -24,11 +25,17 @@ export async function POST(req: Request) {
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    return NextResponse.json(data, { status: res.status });
+    const traceId = traceIdOf(res);
+    if (!res.ok) console.error(`[felix] backend returned ${res.status} (trace ${traceId ?? "none"})`);
+    return NextResponse.json(data, {
+      status: res.status,
+      headers: traceId ? { [TRACE_ID_HEADER]: traceId } : undefined,
+    });
   } catch (err) {
-    console.error("[felix] proxy error:", err);
+    const traceId = traceIdOf();
+    console.error(`[felix] proxy error (trace ${traceId ?? "none"}):`, err);
     return NextResponse.json(
-      { error: "Qualcosa è andato storto. Riprova tra qualche secondo." },
+      { error: "Qualcosa è andato storto. Riprova tra qualche secondo.", traceId },
       { status: 500 }
     );
   }

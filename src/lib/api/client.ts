@@ -1,3 +1,5 @@
+import { traceIdOf } from "./trace";
+
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3001";
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -6,7 +8,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     next: { revalidate: 0 },
   });
   if (!res.ok) {
-    throw new Error(`Backend ${path} returned ${res.status}`);
+    throw new Error(`Backend ${path} returned ${res.status} (trace ${traceIdOf(res) ?? "none"})`);
   }
   return res.json() as Promise<T>;
 }

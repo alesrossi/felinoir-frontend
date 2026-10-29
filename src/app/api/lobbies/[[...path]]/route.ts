@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { ensureDeviceToken } from "@/lib/lobby-device";
+import { TRACE_ID_HEADER, traceIdOf } from "@/lib/api/trace";
 
 const BACKEND_URL = process.env.BACKEND_URL ?? "http://localhost:3001";
 
@@ -39,15 +40,21 @@ async function proxy(req: NextRequest, { params }: { params: Promise<{ path?: st
       body: body || undefined,
       cache: "no-store",
     });
-    if (res.status === 304 || res.status === 204) return new NextResponse(null, { status: res.status });
+    const traceId = traceIdOf(res);
+    const traceHeaders: Record<string, string> = traceId ? { [TRACE_ID_HEADER]: traceId } : {};
+    if (res.status >= 500) console.error(`[lobbies] backend returned ${res.status} (trace ${traceId ?? "none"})`);
+    if (res.status === 304 || res.status === 204) {
+      return new NextResponse(null, { status: res.status, headers: traceHeaders });
+    }
     const text = await res.text();
     return new NextResponse(text, {
       status: res.status,
-      headers: { "Content-Type": res.headers.get("Content-Type") ?? "application/json" },
+      headers: { "Content-Type": res.headers.get("Content-Type") ?? "application/json", ...traceHeaders },
     });
   } catch (err) {
-    console.error("[lobbies] proxy error:", err);
-    return NextResponse.json({ error: "unavailable" }, { status: 502 });
+    const traceId = traceIdOf();
+    console.error(`[lobbies] proxy error (trace ${traceId ?? "none"}):`, err);
+    return NextResponse.json({ error: "unavailable", traceId }, { status: 502 });
   }
 }
 
