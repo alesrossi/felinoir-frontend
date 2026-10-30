@@ -30,10 +30,11 @@ const playfair = Playfair_Display({
   style: ["normal", "italic"],
 });
 
+// Variable font, no `weight`: for static weights Google now serves DM Sans from
+// extension-less /l/font?kit=… URLs, which next/font can't parse (build fails).
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
 });
 
 // Fallbacks for scripts DM Sans can't draw (Russian titles, K-pop cast lists,
