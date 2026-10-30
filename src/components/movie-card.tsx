@@ -69,6 +69,9 @@ export function MovieCard({ movie, screeningCount, filterParams, view = "grid", 
     return () => window.removeEventListener(GLOBAL_FILTER_EVENT, onFilter);
   }, []);
   const path = moviePath(movie);
+  // Links to it aren't prefetched: the film page is dynamic with no loading.tsx,
+  // so a prefetch fetches only the layout shell, yet costs a request (and a
+  // trace) per card on screen.
   const href = filterParams ? `${path}?${filterParams}` : path;
 
   const displayTitle = locale === "en"
@@ -118,7 +121,7 @@ export function MovieCard({ movie, screeningCount, filterParams, view = "grid", 
       <>
         <div className="group flex flex-row gap-4 rounded-xl p-2 hover:bg-foreground/[0.04] transition-colors">
           {/* Poster — links to film */}
-          <Link href={href} className="relative w-[72px] sm:w-24 shrink-0 self-start overflow-hidden rounded-lg ring-1 ring-black/5 dark:ring-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.5)]">
+          <Link href={href} prefetch={false} className="relative w-[72px] sm:w-24 shrink-0 self-start overflow-hidden rounded-lg ring-1 ring-black/5 dark:ring-white/10 shadow-[0_8px_20px_-12px_rgba(0,0,0,0.5)]">
             <PosterImage
               primary={movie.tmdbPosterUrl}
               fallback={movie.posterUrl}
@@ -131,7 +134,7 @@ export function MovieCard({ movie, screeningCount, filterParams, view = "grid", 
 
           {/* Info */}
           <div className="flex-1 min-w-0 py-1 flex flex-col gap-1.5">
-            <Link href={href} className="group/title flex items-start gap-2">
+            <Link href={href} prefetch={false} className="group/title flex items-start gap-2">
               <p className="flex-1 min-w-0 text-[15px] font-semibold leading-snug tracking-[-0.005em] text-foreground group-hover/title:text-roman-muted transition-colors line-clamp-2">
                 {displayTitle}
               </p>
@@ -192,7 +195,7 @@ export function MovieCard({ movie, screeningCount, filterParams, view = "grid", 
   // Grid view — poster card: rating + languages float on the poster as glass
   // chips, the plot rises over the poster on hover.
   return (
-    <Link href={href} className="group block focus:outline-none">
+    <Link href={href} prefetch={false} className="group block focus:outline-none">
       <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-foreground/[0.06] ring-1 ring-black/5 dark:ring-white/10 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.55)] transition duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_22px_40px_-18px_rgba(0,0,0,0.6)] group-active:scale-[0.98] group-focus-visible:ring-2 group-focus-visible:ring-roman motion-reduce:transform-none">
         <PosterImage
           primary={movie.tmdbPosterUrl}

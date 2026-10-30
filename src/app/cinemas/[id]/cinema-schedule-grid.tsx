@@ -221,6 +221,7 @@ export function CinemaScheduleGrid({ dates, rows, cinemaName, cinemaWebsite }: P
                     {/* Film */}
                     <Link
                       href={moviePath({ id: row.movieId, slug: row.movieSlug })}
+                      prefetch={false}
                       className="group flex items-center gap-3 py-3 pr-4"
                     >
                       <PosterThumb

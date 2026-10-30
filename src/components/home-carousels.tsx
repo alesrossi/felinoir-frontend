@@ -42,9 +42,12 @@ function HighlightCard({ movie, locale, priority }: { movie: MovieRecord; locale
     onError: () => setFailed(true),
   } as const;
 
+  // Not prefetched: the film page is dynamic with no loading.tsx, so a prefetch
+  // fetches only the layout shell, yet costs a request (and a trace) per card.
   return (
     <Link
       href={moviePath(movie)}
+      prefetch={false}
       className="group relative flex-none w-[280px] xl:w-[320px] aspect-video snap-start overflow-hidden rounded-xl bg-neutral-900 ring-1 ring-black/5 dark:ring-white/10 shadow-[0_12px_32px_-16px_rgba(0,0,0,0.55)] active:scale-[0.98] transition-transform"
     >
       {backdrop && !failed ? (
